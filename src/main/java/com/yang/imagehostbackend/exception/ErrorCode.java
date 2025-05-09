@@ -13,7 +13,9 @@ public enum ErrorCode {
     FORBIDDEN_ERROR(40300, "禁止访问"),
     SYSTEM_ERROR(50000, "系统内部异常"),
     OPERATION_ERROR(50001, "操作失败"),
-    TIME_LIMIT_ERROR(50002, "操作频繁，请稍后再试");
+    TIME_LIMIT_ERROR(50002, "操作频繁，请稍后再试"),
+    UPLOAD_ERROR(50003, "上传失败");
+
     /**
      * 状态码
      */

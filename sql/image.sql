@@ -1,25 +1,24 @@
 -- 图片表
-create table if not exists picture
-(
-    id           bigint auto_increment comment 'id' primary key,
-    url          varchar(191)                       not null comment '图片 url',
-    name         varchar(128)                       not null comment '图片名称',
-    introduction varchar(191)                       null comment '简介',
-    category     varchar(64)                        null comment '分类',
-    tags         varchar(256)                      null comment '标签（JSON 数组）',
-    picSize      bigint                             null comment '图片体积',
-    picWidth     int                                null comment '图片宽度',
-    picHeight    int                                null comment '图片高度',
-    picScale     double                             null comment '图片宽高比例',
-    picFormat    varchar(32)                        null comment '图片格式',
-    userId       bigint                             not null comment '创建用户 id',
-    createTime   datetime default CURRENT_TIMESTAMP not null comment '创建时间',
-    editTime     datetime default CURRENT_TIMESTAMP not null comment '编辑时间',
-    updateTime   datetime default CURRENT_TIMESTAMP not null on update CURRENT_TIMESTAMP comment '更新时间',
-    isDelete     tinyint  default 0                 not null comment '是否删除',
-    INDEX idx_name (name),                 -- 提升基于图片名称的查询性能
-    INDEX idx_introduction (introduction), -- 用于模糊搜索图片简介
-    INDEX idx_category (category),         -- 提升基于分类的查询性能
-    INDEX idx_tags (tags),                 -- 提升基于标签的查询性能
-    INDEX idx_userId (userId)              -- 提升基于用户 ID 的查询性能
-    ) comment '图片' collate = utf8mb4_unicode_ci;
+CREATE TABLE IF NOT EXISTS picture (
+                                       id BIGINT AUTO_INCREMENT COMMENT 'id' PRIMARY KEY,
+                                       url VARCHAR(191) NOT NULL COMMENT '图片 url',
+                                       name VARCHAR(128) NOT NULL COMMENT '图片名称',
+                                       introduction VARCHAR(191) NULL COMMENT '简介',
+                                       category VARCHAR(64) NULL COMMENT '分类',
+                                       tags VARCHAR(191) NULL COMMENT '标签（JSON 数组）',  -- 缩小长度
+                                       picSize BIGINT NULL COMMENT '图片体积',
+                                       picWidth INT NULL COMMENT '图片宽度',
+                                       picHeight INT NULL COMMENT '图片高度',
+                                       picScale DOUBLE NULL COMMENT '图片宽高比例',
+                                       picFormat VARCHAR(32) NULL COMMENT '图片格式',
+                                       userId BIGINT NOT NULL COMMENT '创建用户 id',
+                                       createTime DATETIME DEFAULT CURRENT_TIMESTAMP NOT NULL COMMENT '创建时间',
+                                       editTime DATETIME DEFAULT CURRENT_TIMESTAMP NOT NULL COMMENT '编辑时间',
+                                       updateTime DATETIME DEFAULT CURRENT_TIMESTAMP NOT NULL ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
+                                       isDelete TINYINT DEFAULT 0 NOT NULL COMMENT '是否删除',
+                                       INDEX idx_name (name),
+                                       INDEX idx_introduction (introduction(191)),  -- 前缀索引
+                                       INDEX idx_category (category),
+                                       INDEX idx_tags (tags(191)),                 -- 前缀索引
+                                       INDEX idx_userId (userId)
+) COMMENT '图片' COLLATE = utf8mb4_unicode_ci;

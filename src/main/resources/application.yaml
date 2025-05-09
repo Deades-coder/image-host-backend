@@ -5,12 +5,23 @@ server:
 spring:
   application:
     name: image-host-backend
+  # 文件大一点
+  servlet:
+    multipart:
+      max-file-size: 100MB
+      max-request-size: 100MB
   # 数据库配置
   datasource:
     driver-class-name: com.mysql.cj.jdbc.Driver
     url: jdbc:mysql://localhost:3306/image
     username: image
     password: 123456
+  # 消息队列
+  rabbitmq:
+      host: 192.168.21.132
+      port: 5672
+      username: guest
+      password: guest
 
 mybatis-plus:
   configuration:
@@ -34,3 +45,15 @@ knife4j:
         api-rule: package
         api-rule-resources:
           - com.yang.imagehostbackend.controller
+
+file:
+  upload:
+    temp-dir: E:\tmp
+
+cos:
+  client:
+    host: https://picture-01-1306560690.cos.ap-shanghai.myqcloud.com
+    secretId: AKID64pOlvugJl01sWwBD2d0DE1bzEG5nXIs
+    secretKey: VwOunlbDf9VgfQyIPKAnCPRJ1WnrlU0J
+    region: ap-shanghai
+    bucket: picture-01-1306560690

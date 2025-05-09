@@ -8,7 +8,6 @@ import java.io.Serializable;
 
 /**
  * 全局响应封装类
- *
  * @param <T>
  */
 @Data
