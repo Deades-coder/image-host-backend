@@ -57,14 +57,13 @@ public class PictureController {
     @Autowired
     private StringRedisTemplate stringRedisTemplate;
 
-    private final Cache<String, String> LOCAL_CACHE =
-            Caffeine.newBuilder().initialCapacity(1024)
-                    .maximumSize(10000L)
-                    // 缓存 5 分钟移除
-                    .expireAfterWrite(5L, TimeUnit.MINUTES)
-                    .build();
+    @Autowired
+    private Cache<String, String> listVOPage;
 
+    @Autowired
+    private Cache<Long, PictureVO> hotImage;
 
+    private static final String LIST_PICVO_BY_PAGE = "yupicture:listPictureVOByPage";
 
     @PostMapping("/upload")
     @AuthCheck(mustRole = UserConstant.ADMIN_ROLE)
@@ -134,10 +133,10 @@ public class PictureController {
         // 构建 key
         String queryCondidition = JSONUtil.toJsonStr(pictureQueryRequest);
         String hashKey = DigestUtils.md5DigestAsHex(queryCondidition.getBytes());
-        String cacheKey = String.format("yupicture:listPictureVOByPage:%s", hashKey);
+        String cacheKey = String.format(LIST_PICVO_BY_PAGE + hashKey);
 
         // 本地缓存查
-        String cachedValue = LOCAL_CACHE.getIfPresent(cacheKey);
+        String cachedValue = listVOPage.getIfPresent(cacheKey);
         if (cachedValue != null) {
             // 如果缓存命中，返回结果
             Page<PictureVO> cachedPage = JSONUtil.toBean(cachedValue,Page.class);
@@ -161,7 +160,7 @@ public class PictureController {
         int cacheExpireTime = 300 + RandomUtil.randomInt(0, 300);
         valueOperations.set(cacheKey, cacheValue, cacheExpireTime, TimeUnit.SECONDS);
 
-        LOCAL_CACHE.put(cacheKey, cacheValue);
+        listVOPage.put(cacheKey, cacheValue);
         return ResultUtils.success(pictureVOPage);
 
     }
@@ -238,6 +237,11 @@ public class PictureController {
     @GetMapping("/get/vo")
     public BaseResponse<PictureVO> getPictureVOById(long id, HttpServletRequest request) {
         ThrowUtils.throwIf(id <= 0, ErrorCode.PARAMS_ERROR);
+        // 优先从缓存获取
+        PictureVO pictureVO = hotImage.getIfPresent(id);
+        if (pictureVO != null) {
+            return ResultUtils.success(pictureVO);
+        }
         // 查询数据库
         Picture picture = pictureService.getById(id);
         ThrowUtils.throwIf(picture == null, ErrorCode.NOT_FOUND_ERROR);
@@ -258,25 +262,6 @@ public class PictureController {
                 pictureService.getQueryWrapper(pictureQueryRequest));
         return ResultUtils.success(picturePage);
     }
-
-    /**
-     * 分页获取图片列表（封装类）
-     */
-//    @PostMapping("/list/page/vo")
-//    public BaseResponse<Page<PictureVO>> listPictureVOByPage(@RequestBody PictureQueryRequest pictureQueryRequest,
-//                                                             HttpServletRequest request) {
-//        long current = pictureQueryRequest.getCurrent();
-//        long size = pictureQueryRequest.getPageSize();
-//        // 限制爬虫
-//        ThrowUtils.throwIf(size > 20, ErrorCode.PARAMS_ERROR);
-//        // 只能查看过审数据
-//        pictureQueryRequest.setReviewStatus(PictureReviewStatusEnum.PASS.getValue());
-//        // 查询数据库
-//        Page<Picture> picturePage = pictureService.page(new Page<>(current, size),
-//                pictureService.getQueryWrapper(pictureQueryRequest));
-//        // 获取封装类
-//        return ResultUtils.success(pictureService.getPictureVOPage(picturePage, request));
-//    }
 
     /**
      * 编辑图片（给用户使用）

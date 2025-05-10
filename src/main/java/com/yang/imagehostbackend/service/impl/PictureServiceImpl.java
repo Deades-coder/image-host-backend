@@ -32,6 +32,7 @@ import org.jsoup.Jsoup;
 import org.jsoup.nodes.Document;
 import org.jsoup.nodes.Element;
 import org.jsoup.select.Elements;
+import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Service;
 
@@ -63,6 +64,12 @@ public class PictureServiceImpl extends ServiceImpl<PictureMapper, Picture>
 
     @Resource
     private UrlPictureUpload urlPictureUpload;
+
+    @Resource
+    private StringRedisTemplate stringRedisTemplate;
+
+    private static final String PICTURE_COUNT_PREFIX = "picture:count:";
+    private static final String HOT_PICTURES_ZSET = "hot:pictures:";
 
     @Override
     public void validPicture(Picture picture) {
@@ -153,6 +160,11 @@ public class PictureServiceImpl extends ServiceImpl<PictureMapper, Picture>
             UserVO userVO = userService.getUserVO(user);
             pictureVO.setUser(userVO);
         }
+        long id = picture.getId();
+        // 统计访问量
+        String redisKey = PICTURE_COUNT_PREFIX + id;
+        stringRedisTemplate.opsForValue().increment(redisKey);
+        stringRedisTemplate.opsForZSet().incrementScore(HOT_PICTURES_ZSET,String.valueOf(id),1); // 更新分数
         return pictureVO;
     }
 
