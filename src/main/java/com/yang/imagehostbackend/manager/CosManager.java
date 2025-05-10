@@ -73,6 +73,16 @@ public class CosManager {
             compressRule.setBucket(cosClientConfig.getBucket());
             compressRule.setRule("imageMogr2/format/webp");
             rules.add(compressRule);
+            if (file.getSize() > 20 * 1024) {
+                PicOperations.Rule thumbnailRule = new PicOperations.Rule();
+                // 拼接缩略图的路径
+                String thumbnailKey = FileUtil.mainName(key) + "_thumbnail.webp";
+                thumbnailRule.setFileId(thumbnailKey);
+                thumbnailRule.setBucket(cosClientConfig.getBucket());
+                // 缩放规则 /thumbnail/<Width>x<Height>>（如果大于原图宽高，则不处理）
+                thumbnailRule.setRule(String.format("imageMogr2/thumbnail/%sx%s>/format/webp", 256, 256));
+                rules.add(thumbnailRule);
+            }
             // 构造处理参数
             picOperations.setRules(rules);
             putObjectRequest.setPicOperations(picOperations);
@@ -91,17 +101,30 @@ public class CosManager {
     public PutObjectResult putPictureObject(String key, File file) {
         PutObjectRequest putObjectRequest = new PutObjectRequest(cosClientConfig.getBucket(), key,
                 file);
-        // 对图片进行处理（获取基本信息也被视作为一种处理）
+        // 对图片进行处理（获取基本信息也被视作为一种图片的处理）
         PicOperations picOperations = new PicOperations();
-        // 表示返回原图信息
+        // 1 表示返回原图信息
         picOperations.setIsPicInfo(1);
+        // 图片处理规则列表
         List<PicOperations.Rule> rules = new ArrayList<>();
+        // 图片压缩（转成 webp 格式）
         String webpKey = FileUtil.mainName(key) + ".webp";
         PicOperations.Rule compressRule = new PicOperations.Rule();
         compressRule.setFileId(webpKey);
         compressRule.setBucket(cosClientConfig.getBucket());
         compressRule.setRule("imageMogr2/format/webp");
         rules.add(compressRule);
+        // 2. 缩略图处理，仅对 > 20 KB 的图片生成缩略图
+        if (file.length() > 20 * 1024) {
+            PicOperations.Rule thumbnailRule = new PicOperations.Rule();
+            // 拼接缩略图的路径，使用webp格式
+            String thumbnailKey = FileUtil.mainName(key) + "_thumbnail.webp";
+            thumbnailRule.setFileId(thumbnailKey);
+            thumbnailRule.setBucket(cosClientConfig.getBucket());
+            // 缩放规则 /thumbnail/<Width>x<Height>>（如果大于原图宽高，则不处理）
+            thumbnailRule.setRule(String.format("imageMogr2/thumbnail/%sx%s>/format/webp", 256, 256));
+            rules.add(thumbnailRule);
+        }
         // 构造处理参数
         picOperations.setRules(rules);
         putObjectRequest.setPicOperations(picOperations);
@@ -119,5 +142,9 @@ public class CosManager {
     public COSObject getObject(String key) {
         GetObjectRequest getObjectRequest = new GetObjectRequest(cosClientConfig.getBucket(), key);
         return cosClient.getObject(getObjectRequest);
+    }
+
+    public void deleteObject(String key) {
+        cosClient.deleteObject(cosClientConfig.getBucket(), key);
     }
 }

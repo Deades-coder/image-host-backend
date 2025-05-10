@@ -9,7 +9,7 @@ import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
 import com.yang.imagehostbackend.constant.UserConstant;
 import com.yang.imagehostbackend.exception.BusinessException;
 import com.yang.imagehostbackend.exception.ErrorCode;
-import com.yang.imagehostbackend.model.UserRoleEnum;
+import com.yang.imagehostbackend.model.enums.UserRoleEnum;
 import com.yang.imagehostbackend.model.dto.user.UserQueryRequest;
 import com.yang.imagehostbackend.model.entity.User;
 import com.yang.imagehostbackend.model.vo.LoginUserVO;

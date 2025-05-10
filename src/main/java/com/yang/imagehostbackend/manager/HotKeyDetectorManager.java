@@ -37,7 +37,7 @@ public class HotKeyDetectorManager {
     private static final int HOT_THRESHOLD = 1; // 访问量阈值
 
     // 每分钟检查一次热点图片
-    @Scheduled(fixedRate = 6000)
+    @Scheduled(fixedRate = 600000)
     public void checkHotPictures() {
         // 获取访问量超过阈值的前10个图片ID
         Set<String> hotPictureIds = redisTemplate.opsForZSet()

@@ -63,12 +63,21 @@ public class UrlPictureUpload extends PictureUploadTemplate {
             // 上传图片到对象存储
             PutObjectResult putObjectResult = cosManager.putPictureObject(uploadPath, file);
             ImageInfo imageInfo = putObjectResult.getCiUploadResult().getOriginalInfo().getImageInfo();
+            // 获取到图片处理结果
             ProcessResults processResults = putObjectResult.getCiUploadResult().getProcessResults();
             List<CIObject> objectList = processResults.getObjectList();
-            if(CollUtil.isNotEmpty(objectList)){
-                CIObject compressedObject = objectList.get(0);
-
-                return buildResult(originalFilename, compressedObject);
+            if (CollUtil.isNotEmpty(objectList)) {
+                // 获取压缩之后得到的文件信息
+                CIObject compressedCiObject = objectList.get(0);
+                // 缩略图默认等于压缩图
+                CIObject thumbnailCiObject = compressedCiObject;
+                // 有生成缩略图，才获取缩略图
+                System.out.println("objectList.size()"+objectList.size());
+                if (objectList.size() > 1) {
+                    thumbnailCiObject = objectList.get(1);
+                }
+                // 封装压缩图的返回结果
+                return buildResult(originalFilename, compressedCiObject, thumbnailCiObject);
             }
             // 获取图片信息对象，封装返回结果
             return buildResult(originalFilename, file, uploadPath, imageInfo);

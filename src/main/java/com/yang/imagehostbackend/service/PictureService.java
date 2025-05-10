@@ -3,10 +3,7 @@ package com.yang.imagehostbackend.service;
 import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.yang.imagehostbackend.model.dto.file.UploadPictureResult;
-import com.yang.imagehostbackend.model.dto.picture.PictureQueryRequest;
-import com.yang.imagehostbackend.model.dto.picture.PictureReviewRequest;
-import com.yang.imagehostbackend.model.dto.picture.PictureUploadByBatchRequest;
-import com.yang.imagehostbackend.model.dto.picture.PictureUploadRequest;
+import com.yang.imagehostbackend.model.dto.picture.*;
 import com.yang.imagehostbackend.model.entity.Picture;
 import com.baomidou.mybatisplus.extension.service.IService;
 import com.yang.imagehostbackend.model.entity.User;
@@ -94,7 +91,35 @@ public interface PictureService extends IService<Picture> {
             User loginUser
     );
 
+    /**
+     * 清理图片文件
+     *
+     * @param oldPicture
+     */
+    void clearPictureFile(Picture oldPicture);
 
+    /**
+     * 删除图片
+     *
+     * @param pictureId
+     * @param loginUser
+     */
+    void deletePicture(long pictureId, User loginUser);
 
+    /**
+     * 编辑图片
+     *
+     * @param pictureEditRequest
+     * @param loginUser
+     */
+    void editPicture(PictureEditRequest pictureEditRequest, User loginUser);
+
+    /**
+     * 校验图片的权限
+     *
+     * @param loginUser
+     * @param picture
+     */
+    void checkPictureAuth(User loginUser, Picture picture);
 
 }

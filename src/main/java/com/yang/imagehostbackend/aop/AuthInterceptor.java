@@ -3,16 +3,14 @@ package com.yang.imagehostbackend.aop;
 import com.yang.imagehostbackend.annotation.AuthCheck;
 import com.yang.imagehostbackend.exception.BusinessException;
 import com.yang.imagehostbackend.exception.ErrorCode;
-import com.yang.imagehostbackend.model.UserRoleEnum;
+import com.yang.imagehostbackend.model.enums.UserRoleEnum;
 import com.yang.imagehostbackend.model.entity.User;
 import com.yang.imagehostbackend.service.UserService;
 import lombok.extern.slf4j.Slf4j;
 import org.aspectj.lang.JoinPoint;
-import org.aspectj.lang.ProceedingJoinPoint;
 import org.aspectj.lang.annotation.Aspect;
 import org.aspectj.lang.annotation.Before;
 import org.springframework.stereotype.Component;
-import org.springframework.web.context.request.RequestAttributes;
 import org.springframework.web.context.request.RequestContextHolder;
 import org.springframework.web.context.request.ServletRequestAttributes;
 

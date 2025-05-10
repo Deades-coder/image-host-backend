@@ -1,4 +1,4 @@
-package com.yang.imagehostbackend.model;
+package com.yang.imagehostbackend.model.enums;
 
 import cn.hutool.core.util.ObjUtil;
 import lombok.Getter;

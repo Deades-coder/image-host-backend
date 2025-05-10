@@ -82,29 +82,37 @@ public abstract class PictureUploadTemplate {
         uploadPictureResult.setPicHeight(picHeight);
         uploadPictureResult.setPicScale(picScale);
         uploadPictureResult.setPicFormat(imageInfo.getFormat());
+
         // 返回可访问的地址
         return uploadPictureResult;
     }
 
     /**
-     * 压缩图片的返回结果
-     * @param originFilename
-     * @param compressedCiObject
+     * 封装返回结果
+     *
+     * @param originalFilename   原始文件名
+     * @param compressedCiObject 压缩后的对象
+     * @param thumbnailCiObject 缩略图对象
      * @return
      */
-    protected UploadPictureResult buildResult(String originFilename, CIObject compressedCiObject) {
-        UploadPictureResult uploadPictureResult = new UploadPictureResult();
+    UploadPictureResult buildResult(String originalFilename, CIObject compressedCiObject, CIObject thumbnailCiObject) {
+        // 计算宽高
         int picWidth = compressedCiObject.getWidth();
         int picHeight = compressedCiObject.getHeight();
         double picScale = NumberUtil.round(picWidth * 1.0 / picHeight, 2).doubleValue();
-        uploadPictureResult.setPicName(FileUtil.mainName(originFilename));
+        // 封装返回结果
+        UploadPictureResult uploadPictureResult = new UploadPictureResult();
+        // 设置压缩后的原图地址
+        uploadPictureResult.setUrl(cosClientConfig.getHost() + "/" + compressedCiObject.getKey());
+        uploadPictureResult.setPicName(FileUtil.mainName(originalFilename));
+        uploadPictureResult.setPicSize(compressedCiObject.getSize().longValue());
         uploadPictureResult.setPicWidth(picWidth);
         uploadPictureResult.setPicHeight(picHeight);
         uploadPictureResult.setPicScale(picScale);
         uploadPictureResult.setPicFormat(compressedCiObject.getFormat());
-        uploadPictureResult.setPicSize(compressedCiObject.getSize().longValue());
-        // 设置图片为压缩后的地址
-        uploadPictureResult.setUrl(cosClientConfig.getHost() + "/" + compressedCiObject.getKey());
+        // 设置缩略图地址
+        uploadPictureResult.setThumbnailUrl(cosClientConfig.getHost() + "/" + thumbnailCiObject.getKey());
+        // 返回可访问的地址
         return uploadPictureResult;
     }
 
