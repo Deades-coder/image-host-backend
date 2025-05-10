@@ -2,6 +2,9 @@ server:
   port: 8123
   servlet:
     context-path: /api
+    session:
+      cookie:
+        max-age: 1800
 spring:
   application:
     name: image-host-backend
@@ -10,6 +13,22 @@ spring:
     multipart:
       max-file-size: 100MB
       max-request-size: 100MB
+
+  # session 配置
+  session:
+    store-type: redis
+    timeout: 1800
+
+
+  # Redis 配置
+  redis:
+    database: 0
+    host: 192.168.21.132
+    port: 6379
+    timeout: 5000
+    password: 123456
+
+
   # 数据库配置
   datasource:
     driver-class-name: com.mysql.cj.jdbc.Driver
@@ -45,6 +64,7 @@ knife4j:
         api-rule: package
         api-rule-resources:
           - com.yang.imagehostbackend.controller
+
 
 cos:
   client:
