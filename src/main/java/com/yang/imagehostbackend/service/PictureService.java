@@ -2,7 +2,9 @@ package com.yang.imagehostbackend.service;
 
 import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
+import com.yang.imagehostbackend.model.dto.file.UploadPictureResult;
 import com.yang.imagehostbackend.model.dto.picture.PictureQueryRequest;
+import com.yang.imagehostbackend.model.dto.picture.PictureReviewRequest;
 import com.yang.imagehostbackend.model.dto.picture.PictureUploadRequest;
 import com.yang.imagehostbackend.model.entity.Picture;
 import com.baomidou.mybatisplus.extension.service.IService;
@@ -27,14 +29,12 @@ public interface PictureService extends IService<Picture> {
     /**
      * 上传图片
      *
-     * @param multipartFile
+     * @param inputSource
      * @param pictureUploadRequest
      * @param loginUser
      * @return
      */
-    PictureVO uploadPicture(MultipartFile multipartFile,
-                            PictureUploadRequest pictureUploadRequest,
-                            User loginUser);
+    PictureVO uploadPicture(Object inputSource, PictureUploadRequest pictureUploadRequest, User loginUser);
 
 
     /**
@@ -62,6 +62,24 @@ public interface PictureService extends IService<Picture> {
      * @return
      */
     QueryWrapper<Picture> getQueryWrapper(PictureQueryRequest pictureQueryRequest);
+    /**
+     * 图片审核
+     *
+     * @param pictureReviewRequest
+     * @param loginUser
+     */
+    void doPictureReview(PictureReviewRequest pictureReviewRequest, User loginUser);
+
+    /**
+     * 填充审核参数
+     *
+     * @param picture
+     * @param loginUser
+     */
+    void fillReviewParams(Picture picture, User loginUser);
+
+
+
 
 
 }

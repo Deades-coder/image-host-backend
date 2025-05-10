@@ -34,7 +34,7 @@ public class CosManager {
     @Resource
     private COSClient cosClient;
 
-    // 上传对象，仅做测试
+    // 上传对象，分块多线程上传，仅做测试
     public Transfer uploadFile(String key, File file) throws CosServiceException, CosClientException {
         PutObjectRequest putObjectRequest = new PutObjectRequest(cosClientConfig.getBucket(), key, file);
         Upload upload = transferManager.upload(putObjectRequest);
@@ -70,6 +70,26 @@ public class CosManager {
             throw new RuntimeException(e);
         }
     }
+
+    /**
+     * 普通同步上传文件，需要文件落地，
+     *
+     * @param key  唯一键
+     * @param file 文件
+     */
+    public PutObjectResult putPictureObject(String key, File file) {
+        PutObjectRequest putObjectRequest = new PutObjectRequest(cosClientConfig.getBucket(), key,
+                file);
+        // 对图片进行处理（获取基本信息也被视作为一种处理）
+        PicOperations picOperations = new PicOperations();
+        // 1 表示返回原图信息
+        picOperations.setIsPicInfo(1);
+        // 构造处理参数
+        putObjectRequest.setPicOperations(picOperations);
+        return cosClient.putObject(putObjectRequest);
+    }
+
+
 
 
     /**
