@@ -48,8 +48,8 @@ knife4j:
 
 cos:
   client:
-    host: https://picture-01-1306560690.cos.ap-shanghai.myqcloud.com
-    secretId: AKID64pOlvugJl01sWwBD2d0DE1bzEG5nXIs
-    secretKey: VwOunlbDf9VgfQyIPKAnCPRJ1WnrlU0J
-    region: ap-shanghai
-    bucket: picture-01-1306560690
+    host:
+    secretId:
+    secretKey:
+    region:
+    bucket:
