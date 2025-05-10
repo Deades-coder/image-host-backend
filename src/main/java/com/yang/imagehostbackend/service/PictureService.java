@@ -5,14 +5,17 @@ import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.yang.imagehostbackend.model.dto.file.UploadPictureResult;
 import com.yang.imagehostbackend.model.dto.picture.PictureQueryRequest;
 import com.yang.imagehostbackend.model.dto.picture.PictureReviewRequest;
+import com.yang.imagehostbackend.model.dto.picture.PictureUploadByBatchRequest;
 import com.yang.imagehostbackend.model.dto.picture.PictureUploadRequest;
 import com.yang.imagehostbackend.model.entity.Picture;
 import com.baomidou.mybatisplus.extension.service.IService;
 import com.yang.imagehostbackend.model.entity.User;
 import com.yang.imagehostbackend.model.vo.PictureVO;
+import org.springframework.scheduling.annotation.Async;
 import org.springframework.web.multipart.MultipartFile;
 
 import javax.servlet.http.HttpServletRequest;
+import java.util.concurrent.CompletableFuture;
 
 /**
 * @Author 小小星仔
@@ -78,6 +81,18 @@ public interface PictureService extends IService<Picture> {
      */
     void fillReviewParams(Picture picture, User loginUser);
 
+    /**
+     * 批量抓取和创建图片
+     *
+     * @param pictureUploadByBatchRequest
+     * @param loginUser
+     * @return 成功创建的图片数
+     */
+    @Async("uploadTaskExecutor")
+    CompletableFuture<Integer> uploadPictureByBatch(
+            PictureUploadByBatchRequest pictureUploadByBatchRequest,
+            User loginUser
+    );
 
 
 

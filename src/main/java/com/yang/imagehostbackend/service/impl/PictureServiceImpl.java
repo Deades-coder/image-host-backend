@@ -2,15 +2,8 @@ package com.yang.imagehostbackend.service.impl;
 
 import cn.hutool.core.bean.BeanUtil;
 import cn.hutool.core.collection.CollUtil;
-import cn.hutool.core.date.DateUtil;
-import cn.hutool.core.io.FileUtil;
 import cn.hutool.core.util.ObjUtil;
-import cn.hutool.core.util.RandomUtil;
 import cn.hutool.core.util.StrUtil;
-import cn.hutool.http.HttpResponse;
-import cn.hutool.http.HttpStatus;
-import cn.hutool.http.HttpUtil;
-import cn.hutool.http.Method;
 import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
@@ -25,6 +18,7 @@ import com.yang.imagehostbackend.model.PictureReviewStatusEnum;
 import com.yang.imagehostbackend.model.dto.file.UploadPictureResult;
 import com.yang.imagehostbackend.model.dto.picture.PictureQueryRequest;
 import com.yang.imagehostbackend.model.dto.picture.PictureReviewRequest;
+import com.yang.imagehostbackend.model.dto.picture.PictureUploadByBatchRequest;
 import com.yang.imagehostbackend.model.dto.picture.PictureUploadRequest;
 import com.yang.imagehostbackend.model.entity.Picture;
 import com.yang.imagehostbackend.model.entity.User;
@@ -33,15 +27,20 @@ import com.yang.imagehostbackend.model.vo.UserVO;
 import com.yang.imagehostbackend.service.PictureService;
 import com.yang.imagehostbackend.mapper.PictureMapper;
 import com.yang.imagehostbackend.service.UserService;
+import lombok.extern.slf4j.Slf4j;
+import org.jsoup.Jsoup;
+import org.jsoup.nodes.Document;
+import org.jsoup.nodes.Element;
+import org.jsoup.select.Elements;
+import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Service;
-import org.springframework.web.multipart.MultipartFile;
 
 import javax.annotation.Resource;
 import javax.servlet.http.HttpServletRequest;
-import java.io.File;
-import java.net.MalformedURLException;
-import java.net.URL;
+import java.io.IOException;
 import java.util.*;
+import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.atomic.AtomicInteger;
 import java.util.stream.Collectors;
 
 /**
@@ -49,6 +48,7 @@ import java.util.stream.Collectors;
 * @description 针对表【picture(图片)】的数据库操作Service实现
 * @createDate 2025-05-09 21:08:59
 */
+@Slf4j
 @Service
 public class PictureServiceImpl extends ServiceImpl<PictureMapper, Picture>
     implements PictureService{
@@ -274,7 +274,72 @@ public class PictureServiceImpl extends ServiceImpl<PictureMapper, Picture>
         }
     }
 
+    @Override
+    @Async("uploadTaskExecutor")
+    public CompletableFuture<Integer> uploadPictureByBatch(PictureUploadByBatchRequest pictureUploadByBatchRequest, User loginUser) {
+        String searchText = pictureUploadByBatchRequest.getSearchText();
+        Integer count = pictureUploadByBatchRequest.getCount();
+        ThrowUtils.throwIf(count > 50, ErrorCode.PARAMS_ERROR, "一次最多上传50张图片");
+        String namePrefix = pictureUploadByBatchRequest.getNamePrefix();
+        if (StrUtil.isBlank(namePrefix)) {
+            namePrefix = searchText;
+        }
+        String fetchUrl = String.format("https://cn.bing.com/images/async?q=%s&mmasync=1", searchText);
 
+        Document document;
+        try {
+            document = Jsoup.connect(fetchUrl).get();
+        } catch (IOException e) {
+            log.error("获取页面失败", e);
+            throw new BusinessException(ErrorCode.OPERATION_ERROR, "获取页面失败");
+        }
+        Element div = document.getElementsByClass("dgControl").first();
+        if (ObjUtil.isEmpty(div)) {
+            throw new BusinessException(ErrorCode.OPERATION_ERROR, "获取元素失败");
+        }
+        Elements imgElementList = div.select("img.mimg");
+
+        AtomicInteger uploadCount = new AtomicInteger(0);
+        AtomicInteger nameIndex = new AtomicInteger(1);
+        List<CompletableFuture<Void>> uploadTasks = new ArrayList<>();
+
+        for (Element imgElement : imgElementList) {
+            if (uploadCount.get() >= count) {
+                break;
+            }
+
+            String fileUrl = imgElement.attr("src");
+            if (StrUtil.isBlank(fileUrl)) {
+                log.info("当前链接为空，已跳过：{}", fileUrl);
+                continue;
+            }
+
+            int questionMarkIndex = fileUrl.indexOf("?");
+            if (questionMarkIndex > -1) {
+                fileUrl = fileUrl.substring(0, questionMarkIndex);
+            }
+
+            PictureUploadRequest pictureUploadRequest = new PictureUploadRequest();
+            pictureUploadRequest.setFileUrl(fileUrl);
+            pictureUploadRequest.setPicName(namePrefix + nameIndex.getAndIncrement());
+
+            String finalFileUrl = fileUrl;
+            CompletableFuture<Void> uploadTask = CompletableFuture.runAsync(() -> {
+                try {
+                    PictureVO pictureVO = this.uploadPicture(finalFileUrl, pictureUploadRequest, loginUser);
+                    log.info("图片上传成功，id = {}", pictureVO.getId());
+                    uploadCount.incrementAndGet();
+                } catch (Exception e) {
+                    log.error("图片上传失败", e);
+                }
+            });
+
+            uploadTasks.add(uploadTask);
+        }
+
+        return CompletableFuture.allOf(uploadTasks.toArray(new CompletableFuture[0]))
+                .thenApply(v -> uploadCount.get());
+    }
 }
 
 
