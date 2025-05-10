@@ -1,5 +1,6 @@
 package com.yang.imagehostbackend.manager.upload;
 
+import cn.hutool.core.collection.CollUtil;
 import cn.hutool.core.date.DateUtil;
 import cn.hutool.core.io.FileUtil;
 import cn.hutool.core.util.RandomUtil;
@@ -9,7 +10,9 @@ import cn.hutool.http.HttpStatus;
 import cn.hutool.http.HttpUtil;
 import cn.hutool.http.Method;
 import com.qcloud.cos.model.PutObjectResult;
+import com.qcloud.cos.model.ciModel.persistence.CIObject;
 import com.qcloud.cos.model.ciModel.persistence.ImageInfo;
+import com.qcloud.cos.model.ciModel.persistence.ProcessResults;
 import com.yang.imagehostbackend.exception.BusinessException;
 import com.yang.imagehostbackend.exception.ErrorCode;
 import com.yang.imagehostbackend.exception.ThrowUtils;
@@ -42,9 +45,9 @@ public class UrlPictureUpload extends PictureUploadTemplate {
 
     @Override
     public UploadPictureResult uploadPicture(Object inputSource, String uploadPathPrefix) {
-        // 1. 校验图片
+        // 校验图片
         validPicture(inputSource);
-        // 2. 图片上传地址
+        // 图片上传地址
         String uuid = RandomUtil.randomString(16);
         String originalFilename = getOriginFilename(inputSource);
         // 自己拼接文件上传路径，而不是使用原始文件名称，可以增强安全性
@@ -53,14 +56,21 @@ public class UrlPictureUpload extends PictureUploadTemplate {
         String uploadPath = String.format("/%s/%s", uploadPathPrefix, uploadFilename);
         File file = null;
         try {
-            // 3. 创建临时文件，获取文件到服务器
+            // 创建临时文件，获取文件到服务器
             file = File.createTempFile(uploadPath, null);
             // 处理文件来源
             processFile(inputSource, file);
-            // 4. 上传图片到对象存储
+            // 上传图片到对象存储
             PutObjectResult putObjectResult = cosManager.putPictureObject(uploadPath, file);
-            // 5. 获取图片信息对象，封装返回结果
             ImageInfo imageInfo = putObjectResult.getCiUploadResult().getOriginalInfo().getImageInfo();
+            ProcessResults processResults = putObjectResult.getCiUploadResult().getProcessResults();
+            List<CIObject> objectList = processResults.getObjectList();
+            if(CollUtil.isNotEmpty(objectList)){
+                CIObject compressedObject = objectList.get(0);
+
+                return buildResult(originalFilename, compressedObject);
+            }
+            // 获取图片信息对象，封装返回结果
             return buildResult(originalFilename, file, uploadPath, imageInfo);
         } catch (Exception e) {
             log.error("图片上传到对象存储失败", e);

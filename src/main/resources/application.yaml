@@ -66,10 +66,3 @@ knife4j:
           - com.yang.imagehostbackend.controller
 
 
-cos:
-  client:
-    host:
-    secretId:
-    secretKey:
-    region:
-    bucket:

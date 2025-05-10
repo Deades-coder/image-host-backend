@@ -1,10 +1,13 @@
 package com.yang.imagehostbackend.manager.upload;
 
+import cn.hutool.core.collection.CollUtil;
 import cn.hutool.core.date.DateUtil;
 import cn.hutool.core.io.FileUtil;
 import cn.hutool.core.util.RandomUtil;
 import com.qcloud.cos.model.PutObjectResult;
+import com.qcloud.cos.model.ciModel.persistence.CIObject;
 import com.qcloud.cos.model.ciModel.persistence.ImageInfo;
+import com.qcloud.cos.model.ciModel.persistence.ProcessResults;
 import com.yang.imagehostbackend.exception.BusinessException;
 import com.yang.imagehostbackend.exception.ErrorCode;
 import com.yang.imagehostbackend.exception.ThrowUtils;
@@ -47,8 +50,14 @@ public class FilePictureUpload extends PictureUploadTemplate{
         File file = null;
         try {
             PutObjectResult putObjectResult =cosManager.putPictureObject(uploadPath, multipartFile);
-            // 获取图片信息对象
             ImageInfo imageInfo = putObjectResult.getCiUploadResult().getOriginalInfo().getImageInfo();
+            ProcessResults processResults = putObjectResult.getCiUploadResult().getProcessResults();
+            List<CIObject> objectList = processResults.getObjectList();
+            if(CollUtil.isNotEmpty(objectList)){
+                CIObject compressedObject = objectList.get(0);
+
+                return buildResult(originalFilename, compressedObject);
+            }
             // 封装返回结果
             return buildResult(originalFilename, multipartFile, uploadPath, imageInfo);
         } catch (Exception e) {

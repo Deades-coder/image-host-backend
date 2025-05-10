@@ -64,9 +64,17 @@ public class CosManager {
                     inputStream,metadata);
             // 对图片进行处理（获取基本信息也被视作为一种处理）
             PicOperations picOperations = new PicOperations();
-            // 1 表示返回原图信息
+            // 表示返回原图信息
             picOperations.setIsPicInfo(1);
+            List<PicOperations.Rule> rules = new ArrayList<>();
+            String webpKey = FileUtil.mainName(key) + ".webp";
+            PicOperations.Rule compressRule = new PicOperations.Rule();
+            compressRule.setFileId(webpKey);
+            compressRule.setBucket(cosClientConfig.getBucket());
+            compressRule.setRule("imageMogr2/format/webp");
+            rules.add(compressRule);
             // 构造处理参数
+            picOperations.setRules(rules);
             putObjectRequest.setPicOperations(picOperations);
             return cosClient.putObject(putObjectRequest);
         } catch (IOException e) {
@@ -85,7 +93,7 @@ public class CosManager {
                 file);
         // 对图片进行处理（获取基本信息也被视作为一种处理）
         PicOperations picOperations = new PicOperations();
-        // 1 表示返回原图信息
+        // 表示返回原图信息
         picOperations.setIsPicInfo(1);
         List<PicOperations.Rule> rules = new ArrayList<>();
         String webpKey = FileUtil.mainName(key) + ".webp";
@@ -94,8 +102,8 @@ public class CosManager {
         compressRule.setBucket(cosClientConfig.getBucket());
         compressRule.setRule("imageMogr2/format/webp");
         rules.add(compressRule);
-        //
         // 构造处理参数
+        picOperations.setRules(rules);
         putObjectRequest.setPicOperations(picOperations);
         return cosClient.putObject(putObjectRequest);
     }
