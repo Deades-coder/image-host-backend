@@ -67,7 +67,7 @@ public class FilePictureUpload extends PictureUploadTemplate{
                 }
 //                log.info("缩略图信息：{}", thumbnailCiObject.getKey());
                 // 封装压缩图的返回结果
-                return buildResult(originalFilename, compressedCiObject, thumbnailCiObject);
+                return buildResult(originalFilename, compressedCiObject, thumbnailCiObject,imageInfo);
             }
             // 封装返回结果
             return buildResult(originalFilename, multipartFile, uploadPath, imageInfo);

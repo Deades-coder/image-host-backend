@@ -103,6 +103,10 @@ public class PictureVO implements Serializable {
      */
     private String thumbnailUrl;
 
+    /**
+     * 图片主色调
+     */
+    private String picColor;
 
     /**
      * 空间 id

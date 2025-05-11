@@ -38,12 +38,14 @@ public class AuthInterceptor {
         User loginUser = userService.getLoginUser(request);
         log.info("当前用户：{}", loginUser.getUserRole());
         UserRoleEnum mustRoleEnum = UserRoleEnum.getEnumByValue(mustRole);
+        log.info("需要{}权限",mustRoleEnum);
         // 如果不需要权限，直接返回（允许方法继续执行）
         if (mustRoleEnum == null) {
             return;
         }
         // 以下的代码：必须有权限，才会通过
         UserRoleEnum userRoleEnum = UserRoleEnum.getEnumByValue(loginUser.getUserRole());
+
         if (userRoleEnum == null) {
             throw new BusinessException(ErrorCode.NO_AUTH_ERROR);
         }

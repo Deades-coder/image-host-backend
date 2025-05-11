@@ -77,7 +77,7 @@ public class UrlPictureUpload extends PictureUploadTemplate {
                     thumbnailCiObject = objectList.get(1);
                 }
                 // 封装压缩图的返回结果
-                return buildResult(originalFilename, compressedCiObject, thumbnailCiObject);
+                return buildResult(originalFilename, compressedCiObject, thumbnailCiObject,imageInfo);
             }
             // 获取图片信息对象，封装返回结果
             return buildResult(originalFilename, file, uploadPath, imageInfo);

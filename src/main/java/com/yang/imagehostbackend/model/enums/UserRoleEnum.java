@@ -22,6 +22,6 @@ public enum UserRoleEnum {
     }
     public static UserRoleEnum getEnumByValue(String value) {
         if(ObjUtil.isEmpty(value)) return null;
-        return Arrays.stream(values()).filter(role -> role.equals(role.getValue())).findFirst().orElse(null);
+        return Arrays.stream(values()).filter(role -> value.equals(role.getValue())).findFirst().orElse(null);
     }
 }
