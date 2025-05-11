@@ -18,6 +18,7 @@ import java.io.File;
 import java.io.IOException;
 import java.io.InputStream;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
 
 /**
@@ -36,6 +37,8 @@ public class CosManager {
 
     @Resource
     private COSClient cosClient;
+
+    private final List<String> ALLOW_FILE_TYPE = Arrays.asList("png", "jpg", "jpeg");
 
     // 上传对象，分块多线程上传，仅做测试
     public Transfer uploadFile(String key, File file) throws CosServiceException, CosClientException {
@@ -73,16 +76,32 @@ public class CosManager {
             compressRule.setBucket(cosClientConfig.getBucket());
             compressRule.setRule("imageMogr2/format/webp");
             rules.add(compressRule);
+            // 缩略图处理，仅对 > 20 KB 的图片生成缩略图
             if (file.getSize() > 20 * 1024) {
+                String thumbnailKey;
                 PicOperations.Rule thumbnailRule = new PicOperations.Rule();
-                // 拼接缩略图的路径
-                String thumbnailKey = FileUtil.mainName(key) + "_thumbnail.webp";
+                if(!ALLOW_FILE_TYPE.contains(FileUtil.getSuffix(key))){
+                    thumbnailKey = FileUtil.mainName(key) + "_thumbnail." + "png";
+                }else {
+                    // 拼接缩略图的路径，使用webp格式
+                    thumbnailKey = FileUtil.mainName(key) + "_thumbnail." + FileUtil.getSuffix(key);
+                }
                 thumbnailRule.setFileId(thumbnailKey);
                 thumbnailRule.setBucket(cosClientConfig.getBucket());
                 // 缩放规则 /thumbnail/<Width>x<Height>>（如果大于原图宽高，则不处理）
-                thumbnailRule.setRule(String.format("imageMogr2/thumbnail/%sx%s>/format/webp", 256, 256));
+                thumbnailRule.setRule(String.format("imageMogr2/thumbnail/%sx%s>", 128, 128));
                 rules.add(thumbnailRule);
+            }else{
+                if (!ALLOW_FILE_TYPE.contains(FileUtil.getSuffix(key))) {
+                    PicOperations.Rule transferRule = new PicOperations.Rule();
+                    transferRule.setBucket(cosClientConfig.getBucket());
+                    transferRule.setRule("imageMogr2/format/png");
+                    String transferKey = FileUtil.mainName(key) + "_transfer" + ".png";
+                    transferRule.setFileId(transferKey);
+                    rules.add(transferRule);
+                }
             }
+
             // 构造处理参数
             picOperations.setRules(rules);
             putObjectRequest.setPicOperations(picOperations);
@@ -103,7 +122,7 @@ public class CosManager {
                 file);
         // 对图片进行处理（获取基本信息也被视作为一种图片的处理）
         PicOperations picOperations = new PicOperations();
-        // 1 表示返回原图信息
+        // 表示返回原图信息
         picOperations.setIsPicInfo(1);
         // 图片处理规则列表
         List<PicOperations.Rule> rules = new ArrayList<>();
@@ -114,23 +133,36 @@ public class CosManager {
         compressRule.setBucket(cosClientConfig.getBucket());
         compressRule.setRule("imageMogr2/format/webp");
         rules.add(compressRule);
-        // 2. 缩略图处理，仅对 > 20 KB 的图片生成缩略图
+        // 缩略图处理，仅对 > 20 KB 的图片生成缩略图
         if (file.length() > 20 * 1024) {
+            String thumbnailKey;
             PicOperations.Rule thumbnailRule = new PicOperations.Rule();
-            // 拼接缩略图的路径，使用webp格式
-            String thumbnailKey = FileUtil.mainName(key) + "_thumbnail.webp";
+            if(!ALLOW_FILE_TYPE.contains(FileUtil.getSuffix(key))){
+                thumbnailKey = FileUtil.mainName(key) + "_thumbnail." + "png";
+            }else {
+                // 拼接缩略图的路径，使用webp格式
+                thumbnailKey = FileUtil.mainName(key) + "_thumbnail." + FileUtil.getSuffix(key);
+            }
             thumbnailRule.setFileId(thumbnailKey);
             thumbnailRule.setBucket(cosClientConfig.getBucket());
             // 缩放规则 /thumbnail/<Width>x<Height>>（如果大于原图宽高，则不处理）
-            thumbnailRule.setRule(String.format("imageMogr2/thumbnail/%sx%s>/format/webp", 256, 256));
+            thumbnailRule.setRule(String.format("imageMogr2/thumbnail/%sx%s>", 128, 128));
             rules.add(thumbnailRule);
+        }else{
+            if (!ALLOW_FILE_TYPE.contains(FileUtil.getSuffix(key))) {
+                PicOperations.Rule transferRule = new PicOperations.Rule();
+                transferRule.setBucket(cosClientConfig.getBucket());
+                transferRule.setRule("imageMogr2/format/png");
+                String transferKey = FileUtil.mainName(key) + "_transfer" + ".png";
+                transferRule.setFileId(transferKey);
+                rules.add(transferRule);
+            }
         }
         // 构造处理参数
         picOperations.setRules(rules);
         putObjectRequest.setPicOperations(picOperations);
         return cosClient.putObject(putObjectRequest);
     }
-
 
 
 

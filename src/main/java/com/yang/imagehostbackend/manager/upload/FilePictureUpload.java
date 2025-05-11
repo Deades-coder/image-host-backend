@@ -50,10 +50,12 @@ public class FilePictureUpload extends PictureUploadTemplate{
         File file = null;
         try {
             PutObjectResult putObjectResult =cosManager.putPictureObject(uploadPath, multipartFile);
+
             ImageInfo imageInfo = putObjectResult.getCiUploadResult().getOriginalInfo().getImageInfo();
             // 获取到图片处理结果
             ProcessResults processResults = putObjectResult.getCiUploadResult().getProcessResults();
             List<CIObject> objectList = processResults.getObjectList();
+
             if (CollUtil.isNotEmpty(objectList)) {
                 // 获取压缩之后得到的文件信息
                 CIObject compressedCiObject = objectList.get(0);
@@ -63,6 +65,7 @@ public class FilePictureUpload extends PictureUploadTemplate{
                 if (objectList.size() > 1) {
                     thumbnailCiObject = objectList.get(1);
                 }
+//                log.info("缩略图信息：{}", thumbnailCiObject.getKey());
                 // 封装压缩图的返回结果
                 return buildResult(originalFilename, compressedCiObject, thumbnailCiObject);
             }
