@@ -1,0 +1,24 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper
+        PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.yang.imagehostbackend.mapper.ExpendImageTaskMapper">
+
+    <resultMap id="BaseResultMap" type="com.yang.imagehostbackend.model.entity.ExpendImageTask">
+            <id property="id" column="id" jdbcType="BIGINT"/>
+            <result property="task_id" column="task_id" jdbcType="VARCHAR"/>
+            <result property="picture_id" column="picture_id" jdbcType="BIGINT"/>
+            <result property="user_id" column="user_id" jdbcType="BIGINT"/>
+            <result property="task_status" column="task_status" jdbcType="VARCHAR"/>
+            <result property="output_image_url" column="output_image_url" jdbcType="VARCHAR"/>
+            <result property="create_time" column="create_time" jdbcType="TIMESTAMP"/>
+            <result property="update_time" column="update_time" jdbcType="TIMESTAMP"/>
+            <result property="is_delete" column="is_delete" jdbcType="TINYINT"/>
+    </resultMap>
+
+    <sql id="Base_Column_List">
+        id,task_id,picture_id,
+        user_id,task_status,output_image_url,
+        create_time,update_time,is_delete
+    </sql>
+</mapper>

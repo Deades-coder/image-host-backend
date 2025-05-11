@@ -7,7 +7,6 @@ import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.github.benmanes.caffeine.cache.Cache;
 import com.yang.imagehostbackend.annotation.AuthCheck;
 import com.yang.imagehostbackend.api.aliyunai.AliYunAiApi;
-import com.yang.imagehostbackend.api.aliyunai.model.CreateOutPaintingTaskRequest;
 import com.yang.imagehostbackend.api.aliyunai.model.CreateOutPaintingTaskResponse;
 import com.yang.imagehostbackend.api.aliyunai.model.GetOutPaintingTaskResponse;
 import com.yang.imagehostbackend.api.imagesearch.ImageSearchApiFacade;
@@ -29,6 +28,7 @@ import com.yang.imagehostbackend.model.vo.PictureVO;
 import com.yang.imagehostbackend.service.PictureService;
 import com.yang.imagehostbackend.service.UserService;
 import com.yang.imagehostbackend.service.SpaceService;
+import com.yang.imagehostbackend.service.ExpendImageTaskService;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.BeanUtils;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -42,7 +42,6 @@ import org.springframework.web.multipart.MultipartFile;
 import javax.annotation.Resource;
 import javax.servlet.http.HttpServletRequest;
 import java.util.Arrays;
-import java.util.Date;
 import java.util.List;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.Executor;
@@ -62,6 +61,8 @@ public class PictureController {
     private UserService userService;
     @Resource
     private SpaceService spaceService;
+    @Resource
+    private OutPaintingTaskService outPaintingTaskService;
     @Resource(name = "uploadTaskExecutor")
     private Executor uploadTaskExecutor;
     @Autowired
@@ -75,6 +76,9 @@ public class PictureController {
 
     @Resource
     private AliYunAiApi aliYunAiApi;
+
+    @Resource
+    private ExpendImageTaskService expendImageTaskService;
 
     private static final String LIST_PICVO_BY_PAGE = "yupicture:listPictureVOByPage";
 
@@ -381,7 +385,33 @@ public class PictureController {
     @GetMapping("/out_painting/get_task")
     public BaseResponse<GetOutPaintingTaskResponse> getPictureOutPaintingTask(String taskId) {
         ThrowUtils.throwIf(StrUtil.isBlank(taskId), ErrorCode.PARAMS_ERROR);
+        
+        // 首先从数据库中查询任务
+        OutPaintingTask outPaintingTask = expendImageTaskService.getByTaskId(taskId);
+        if (outPaintingTask == null) {
+            throw new BusinessException(ErrorCode.NOT_FOUND_ERROR, "扩图任务不存在");
+        }
+        
+        // 如果任务已经成功完成，直接返回结果
+        if ("SUCCEEDED".equals(outPaintingTask.getTaskStatus()) && StrUtil.isNotBlank(outPaintingTask.getOutputImageUrl())) {
+            GetOutPaintingTaskResponse response = new GetOutPaintingTaskResponse();
+            GetOutPaintingTaskResponse.Output output = new GetOutPaintingTaskResponse.Output();
+            output.setTaskId(outPaintingTask.getTaskId());
+            output.setTaskStatus(outPaintingTask.getTaskStatus());
+            output.setOutputImageUrl(outPaintingTask.getOutputImageUrl());
+            response.setOutput(output);
+            return ResultUtils.success(response);
+        }
+        
+        // 如果任务还在进行中，查询最新状态
         GetOutPaintingTaskResponse task = aliYunAiApi.getOutPaintingTask(taskId);
+        
+        // 更新数据库中的任务状态
+        if (task != null && task.getOutput() != null && 
+            !outPaintingTask.getTaskStatus().equals(task.getOutput().getTaskStatus())) {
+            expendImageTaskService.processOutPaintingTaskResult(taskId);
+        }
+        
         return ResultUtils.success(task);
     }
 

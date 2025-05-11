@@ -28,6 +28,7 @@ import com.yang.imagehostbackend.model.entity.Picture;
 import com.yang.imagehostbackend.model.entity.User;
 import com.yang.imagehostbackend.model.vo.PictureVO;
 import com.yang.imagehostbackend.model.vo.UserVO;
+import com.yang.imagehostbackend.producer.ExpandImageTaskProducer;
 import com.yang.imagehostbackend.service.PictureService;
 import com.yang.imagehostbackend.mapper.PictureMapper;
 import com.yang.imagehostbackend.service.SpaceService;
@@ -50,6 +51,7 @@ import javax.annotation.Resource;
 import javax.servlet.http.HttpServletRequest;
 import java.awt.*;
 import java.io.IOException;
+import java.time.LocalDateTime;
 import java.util.*;
 import java.util.List;
 import java.util.concurrent.CompletableFuture;
@@ -94,6 +96,15 @@ public class PictureServiceImpl extends ServiceImpl<PictureMapper, Picture>
 
     @Resource
     private AliYunAiApi aliYunAiApi;
+
+    @Resource
+    private OutPaintingTaskService outPaintingTaskService;
+    
+    @Resource
+    private ExpendImageTaskService expendImageTaskService;
+    
+    @Resource
+    private ExpandImageTaskProducer expandImageTaskProducer;
 
     private static final String PICTURE_COUNT_PREFIX = "picture:count:";
     private static final String HOT_PICTURES_ZSET = "hot:pictures:";
@@ -670,7 +681,36 @@ public class PictureServiceImpl extends ServiceImpl<PictureMapper, Picture>
         createOutPaintingTaskRequest.setInput(input);
         createOutPaintingTaskRequest.setParameters(createPictureOutPaintingTaskRequest.getParameters());
         // 创建任务
-        return aliYunAiApi.createOutPaintingTask(createOutPaintingTaskRequest);
+        CreateOutPaintingTaskResponse response = aliYunAiApi.createOutPaintingTask(createOutPaintingTaskRequest);
+        
+        if (response != null && response.getOutput() != null && StrUtil.isNotBlank(response.getOutput().getTaskId())) {
+            String taskId = response.getOutput().getTaskId();
+            log.info("创建扩图任务成功，taskId={}", taskId);
+            
+            // 保存任务到数据库
+            ExpendImageTask expendImageTask = new ExpendImageTask();
+            expendImageTask.setTask_id(taskId);
+            expendImageTask.setPicture_id(pictureId);
+            expendImageTask.setUser_id(loginUser.getId());
+            expendImageTask.setTask_status(response.getOutput().getTaskStatus());
+            expendImageTask.setCreate_time(new Date());
+            expendImageTask.setUpdate_time(new Date());
+            expendImageTask.setIs_delete(0);
+            expendImageTaskService.save(expendImageTask);
+            
+            // 发送消息到Kafka队列进行异步轮询
+            ExpandImageTaskMessage message = ExpandImageTaskMessage.builder()
+                    .taskId(taskId)
+                    .pictureId(pictureId)
+                    .userId(loginUser.getId())
+                    .createTime(LocalDateTime.now())
+                    .retryCount(0)
+                    .taskStatus(response.getOutput().getTaskStatus())
+                    .build();
+            expandImageTaskProducer.sendMessage(message);
+        }
+        
+        return response;
     }
 
 }
