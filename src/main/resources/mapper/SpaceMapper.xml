@@ -17,11 +17,14 @@
             <result property="editTime" column="editTime" jdbcType="TIMESTAMP"/>
             <result property="updateTime" column="updateTime" jdbcType="TIMESTAMP"/>
             <result property="isDelete" column="isDelete" jdbcType="TINYINT"/>
+            <result property="spaceType" column="spaceType" jdbcType="INTEGER"/>
+
+
     </resultMap>
 
     <sql id="Base_Column_List">
         id,spaceName,spaceLevel,
-        maxSize,maxCount,totalSize,
+        maxSize,maxCount,totalSize,spaceType,
         totalCount,userId,createTime,
         editTime,updateTime,isDelete
     </sql>
