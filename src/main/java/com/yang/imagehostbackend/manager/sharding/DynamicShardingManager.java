@@ -72,7 +72,7 @@ public class DynamicShardingManager {
     private void updateShardingTableNodes() {
         Set<String> tableNames = fetchAllPictureTableNames();
         String newActualDataNodes = tableNames.stream()
-                .map(tableName -> "yu_picture." + tableName) // 确保前缀合法
+                .map(tableName -> "image." + tableName) // 确保前缀合法
                 .collect(Collectors.joining(","));
         log.info("动态分表 actual-data-nodes 配置: {}", newActualDataNodes);
 

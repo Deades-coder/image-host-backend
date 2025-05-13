@@ -143,15 +143,15 @@ knife4j:
 
 cos:
   client:
-    host: https://picture-01-1306560690.cos.ap-shanghai.myqcloud.com
-    secretId: AKID64pOlvugJl01sWwBD2d0DE1bzEG5nXIs
-    secretKey: VwOunlbDf9VgfQyIPKAnCPRJ1WnrlU0J
-    region: ap-shanghai
-    bucket: picture-01-1306560690
+    host:
+    secretId:
+    secretKey:
+    region:
+    bucket:
 
 # 阿里云 AI 配置
 aliYunAi:
-  apiKey: sk-5c01cb9f5b63471fabf015126316719e
+  apiKey:
 
 # 自定义Kafka主题配置
 kafka:
