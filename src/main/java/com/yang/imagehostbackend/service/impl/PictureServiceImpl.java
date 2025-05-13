@@ -8,6 +8,7 @@ import cn.hutool.json.JSONUtil;
 import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
+import com.github.benmanes.caffeine.cache.Cache;
 import com.yang.imagehostbackend.api.aliyunai.AliYunAiApi;
 import com.yang.imagehostbackend.api.aliyunai.model.CreateOutPaintingTaskRequest;
 import com.yang.imagehostbackend.api.aliyunai.model.ExpanedImageTaskResponse;
@@ -43,6 +44,7 @@ import org.jsoup.nodes.Document;
 import org.jsoup.nodes.Element;
 import org.jsoup.select.Elements;
 import org.springframework.beans.BeanUtils;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Service;
@@ -69,9 +71,8 @@ import java.util.stream.Collectors;
 @Service
 public class PictureServiceImpl extends ServiceImpl<PictureMapper, Picture>
     implements PictureService{
-
-    @Resource
-    private FileManager fileManager;
+    @Autowired
+    private Cache<String, String> listVOPage;
 
     @Resource
     private UserService userService;
@@ -99,7 +100,11 @@ public class PictureServiceImpl extends ServiceImpl<PictureMapper, Picture>
     @Resource
     private AliYunAiApi aliYunAiApi;
 
-    
+    @Autowired
+    private Cache<Long, PictureVO> hotImage;
+
+    private static final String LIST_PICVO_BY_PAGE = "yupicture:listPictureVOByPage";
+
     @Resource
     private ExpendImageTaskService expendImageTaskService;
     
@@ -215,6 +220,9 @@ public class PictureServiceImpl extends ServiceImpl<PictureMapper, Picture>
         // 操作数据库
         // 如果 pictureId 不为空，表示更新，否则是新增
         if (pictureId != null) {
+            // 如果是更新，需要清除缓存（第一次删除）
+            clearPictureCache(pictureId);
+            
             // 如果是更新，需要补充 id 和编辑时间
             picture.setId(pictureId);
             picture.setEditTime(new Date());
@@ -236,8 +244,11 @@ public class PictureServiceImpl extends ServiceImpl<PictureMapper, Picture>
             }
             return picture;
         });
-//        boolean result = this.saveOrUpdate(picture);
-//        ThrowUtils.throwIf(!result, ErrorCode.OPERATION_ERROR, "图片上传失败，数据库操作失败");
+        
+        // 如果是更新操作，延迟一段时间后再次删除缓存（双删策略）
+        if (pictureId != null) {
+            asyncDeleteCache(pictureId);
+        }
         return PictureVO.objToVo(picture);
 
     }
@@ -488,6 +499,10 @@ public class PictureServiceImpl extends ServiceImpl<PictureMapper, Picture>
         ThrowUtils.throwIf(oldPicture == null, ErrorCode.NOT_FOUND_ERROR);
         // 校验权限
         checkPictureAuth(loginUser, oldPicture);
+        
+        // 第一次删除缓存
+        clearPictureCache(pictureId);
+        
         // 开启事务
         transactionTemplate.execute(status -> {
             // 操作数据库
@@ -502,6 +517,11 @@ public class PictureServiceImpl extends ServiceImpl<PictureMapper, Picture>
             ThrowUtils.throwIf(!update, ErrorCode.OPERATION_ERROR, "额度更新失败");
             return true;
         });
+        
+        // 延迟双删
+        asyncDeleteCache(pictureId);
+        
+        // 清理文件
         this.clearPictureFile(oldPicture);
     }
 
@@ -516,17 +536,24 @@ public class PictureServiceImpl extends ServiceImpl<PictureMapper, Picture>
         picture.setEditTime(new Date());
         // 数据校验
         this.validPicture(picture);
-       // 判断是否存在
-       long id = pictureEditRequest.getId();
-       Picture oldPicture = this.getById(id);
-       ThrowUtils.throwIf(oldPicture == null, ErrorCode.NOT_FOUND_ERROR);
-       //校验权限
+        // 判断是否存在
+        long id = pictureEditRequest.getId();
+        Picture oldPicture = this.getById(id);
+        ThrowUtils.throwIf(oldPicture == null, ErrorCode.NOT_FOUND_ERROR);
+        // 校验权限
         checkPictureAuth(loginUser, oldPicture);
-        //补充审核参数
+        // 补充审核参数
         this.fillReviewParams(picture, loginUser);
+        
+        // 第一次删除缓存
+        clearPictureCache(id);
+        
         // 操作数据库
         boolean result = this.updateById(picture);
         ThrowUtils.throwIf(!result, ErrorCode.OPERATION_ERROR);
+        
+        // 延迟双删
+        asyncDeleteCache(id);
     }
 
     @Override
@@ -620,6 +647,11 @@ public class PictureServiceImpl extends ServiceImpl<PictureMapper, Picture>
             throw new BusinessException(ErrorCode.NOT_FOUND_ERROR, "图片不存在或不属于该空间");
         }
         
+        // 第一次删除缓存（批量）
+        for (Picture picture : pictureList) {
+            clearPictureCache(picture.getId());
+        }
+        
         // 分批处理，每批次50个
         int batchSize = 50;
         List<List<Picture>> batches = new ArrayList<>();
@@ -664,6 +696,11 @@ public class PictureServiceImpl extends ServiceImpl<PictureMapper, Picture>
         }
         
         ThrowUtils.throwIf(!allSuccess, ErrorCode.OPERATION_ERROR, "部分批次更新失败");
+        
+        // 延迟双删（批量）
+        for (Picture picture : pictureList) {
+            asyncDeleteCache(picture.getId());
+        }
     }
 
     @Override
@@ -711,6 +748,50 @@ public class PictureServiceImpl extends ServiceImpl<PictureMapper, Picture>
         }
         
         return response;
+    }
+
+    /**
+     * 清除图片相关的所有缓存
+     * @param pictureId 图片ID
+     */
+    private void clearPictureCache(Long pictureId) {
+        if (pictureId == null) return;
+        
+        // 清除本地缓存
+        hotImage.invalidate(pictureId);
+        
+        // 清除Redis缓存 - 包括与该图片相关的所有查询缓存
+        Set<String> keys = stringRedisTemplate.keys(LIST_PICVO_BY_PAGE + "*");
+        if (keys != null && !keys.isEmpty()) {
+            stringRedisTemplate.delete(keys);
+        }
+        
+        // 清除本地的分页缓存 - 因为无法精确知道哪些分页包含该图片，所以清空所有
+        listVOPage.invalidateAll();
+        
+        // 清除热点图片计数和排名
+        String redisKey = PICTURE_COUNT_PREFIX + pictureId;
+        stringRedisTemplate.delete(redisKey);
+        stringRedisTemplate.opsForZSet().remove(HOT_PICTURES_ZSET, String.valueOf(pictureId));
+        
+        log.debug("Cleared cache for picture ID: {}", pictureId);
+    }
+    
+    /**
+     * 异步延迟执行第二次缓存删除操作
+     * @param pictureId 图片ID
+     */
+    @Async("uploadTaskExecutor")
+    public void asyncDeleteCache(Long pictureId) {
+        try {
+            // 延迟一段时间再次删除缓存，通常建议50-100ms
+            Thread.sleep(100);
+            clearPictureCache(pictureId);
+            log.debug("Executed delayed cache deletion for picture ID: {}", pictureId);
+        } catch (InterruptedException e) {
+            log.error("Delayed cache deletion interrupted for picture ID: {}", pictureId, e);
+            Thread.currentThread().interrupt();
+        }
     }
 
 }
