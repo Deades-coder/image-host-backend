@@ -35,6 +35,35 @@ spring:
     url: jdbc:mysql://localhost:3306/image
     username: image
     password: 123456
+
+  spring:
+  shardingsphere:
+    datasource:
+      names: image
+      image:  # 修正数据源名称，与 names 一致
+        type: com.zaxxer.hikari.HikariDataSource
+        driver-class-name: com.mysql.cj.jdbc.Driver
+        url: jdbc:mysql://localhost:3306/image?useSSL=false&serverTimezone=UTC
+        username: image
+        password: 123456
+    rules:
+      sharding:
+        tables:
+          picture:
+            actual-data-nodes: image.picture
+            table-strategy:
+              standard:
+                sharding-column: spaceId
+                sharding-algorithm-name: picture_sharding_algorithm
+        sharding-algorithms:
+          picture_sharding_algorithm:
+            type: CLASS_BASED
+            props:
+              strategy: standard
+              algorithmClassName: com.yang.imagehostbackend.manager.sharding.PictureShardingAlgorithm
+    props:
+      sql-show: true  # 打印 SQL 日志，便于调试
+
   # 消息队列
   rabbitmq:
       host: 192.168.21.132
@@ -96,6 +125,9 @@ mybatis-plus:
       logic-delete-field: isDelete # 全局逻辑删除的实体字段名
       logic-delete-value: 1 # 逻辑已删除值（默认为 1）
       logic-not-delete-value: 0 # 逻辑未删除值（默认为 0）
+    enable-sql-runner: true
+
+
 
 # 接口文档配置
 knife4j:

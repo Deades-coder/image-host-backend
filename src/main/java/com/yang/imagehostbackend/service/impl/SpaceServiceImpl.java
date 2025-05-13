@@ -5,24 +5,28 @@ import cn.hutool.core.util.ObjUtil;
 import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
-import com.fasterxml.jackson.databind.util.BeanUtil;
 import com.github.xiaoymin.knife4j.core.util.StrUtil;
 import com.yang.imagehostbackend.exception.BusinessException;
 import com.yang.imagehostbackend.exception.ErrorCode;
 import com.yang.imagehostbackend.exception.ThrowUtils;
+import com.yang.imagehostbackend.manager.sharding.DynamicShardingManager;
 import com.yang.imagehostbackend.model.dto.space.SpaceAddRequest;
 import com.yang.imagehostbackend.model.dto.space.SpaceQueryRequest;
 import com.yang.imagehostbackend.model.entity.Space;
+import com.yang.imagehostbackend.model.entity.SpaceUser;
 import com.yang.imagehostbackend.model.entity.User;
 import com.yang.imagehostbackend.model.enums.SpaceLevelEnum;
+import com.yang.imagehostbackend.model.enums.SpaceRoleEnum;
 import com.yang.imagehostbackend.model.enums.SpaceTypeEnum;
 import com.yang.imagehostbackend.model.vo.SpaceVO;
 import com.yang.imagehostbackend.model.vo.UserVO;
 import com.yang.imagehostbackend.service.SpaceService;
 import com.yang.imagehostbackend.mapper.SpaceMapper;
+import com.yang.imagehostbackend.service.SpaceUserService;
 import com.yang.imagehostbackend.service.UserService;
 import org.springframework.beans.BeanUtils;
 import org.springframework.context.annotation.Bean;
+import org.springframework.context.annotation.Lazy;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.support.TransactionTemplate;
 
@@ -45,6 +49,14 @@ public class SpaceServiceImpl extends ServiceImpl<SpaceMapper, Space>
 
     @Resource
     private TransactionTemplate  transactionTemplate;
+
+    @Resource
+    @Lazy
+    private DynamicShardingManager dynamicShardingManager;
+    @Resource
+    @Lazy
+    private SpaceUserService spaceUserService;
+
 
     @Override
     public long addSpace(SpaceAddRequest spaceAddRequest, User loginUser) {
@@ -86,6 +98,16 @@ public class SpaceServiceImpl extends ServiceImpl<SpaceMapper, Space>
                 // 创建
                 boolean result = this.save(space);
                 ThrowUtils.throwIf(!result, ErrorCode.OPERATION_ERROR, "保存空间到数据库失败");
+                // 如果是团队空间，关联新增团队成员记录
+                if (SpaceTypeEnum.TEAM.getValue() == spaceAddRequest.getSpaceType()) {
+                    SpaceUser spaceUser = new SpaceUser();
+                    spaceUser.setSpaceId(space.getId());
+                    spaceUser.setUserId(userId);
+                    spaceUser.setSpaceRole(SpaceRoleEnum.ADMIN.getValue());
+                    result = spaceUserService.save(spaceUser);
+                    ThrowUtils.throwIf(!result, ErrorCode.OPERATION_ERROR, "创建团队成员记录失败");
+                }
+                dynamicShardingManager.createSpacePictureTable(space);
                 return space.getId();
             });
             return Optional.ofNullable(newSpaceId).orElse(-1L);
