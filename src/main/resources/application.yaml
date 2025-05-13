@@ -19,7 +19,6 @@ spring:
     store-type: redis
     timeout: 1800
 
-
   # Redis 配置
   redis:
     database: 0
@@ -28,7 +27,6 @@ spring:
     timeout: 5000
     password: 123456
 
-
   # 数据库配置
   datasource:
     driver-class-name: com.mysql.cj.jdbc.Driver
@@ -36,7 +34,7 @@ spring:
     username: image
     password: 123456
 
-  spring:
+  # ShardingSphere 配置
   shardingsphere:
     datasource:
       names: image
@@ -66,10 +64,11 @@ spring:
 
   # 消息队列
   rabbitmq:
-      host: 192.168.21.132
-      port: 5672
-      username: guest
-      password: guest
+    host: 192.168.21.132
+    port: 5672
+    username:
+    password:
+
   # Kafka配置
   kafka:
     bootstrap-servers: 192.168.21.132:9092
@@ -127,8 +126,6 @@ mybatis-plus:
       logic-not-delete-value: 0 # 逻辑未删除值（默认为 0）
     enable-sql-runner: true
 
-
-
 # 接口文档配置
 knife4j:
   enable: true
@@ -157,4 +154,18 @@ aliYunAi:
 kafka:
   topics:
     expendimage-task: expendimage-task
+
+# 点赞对账任务配置
+thumb:
+  reconcile:
+    batch-size: 100
+
+# RabbitMQ队列配置
+rabbitmq:
+  exchange: thumb-exchange
+  queue: thumb-queue
+  routing-key: thumb-routing-key
+  dead-letter-exchange: thumb-dlx
+  dead-letter-queue: thumb-dlq
+  dead-letter-routing-key: thumb-dl-routing-key
 

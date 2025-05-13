@@ -22,7 +22,7 @@ public class StpKit {
     public static final StpLogic DEFAULT = StpUtil.stpLogic;
 
     /**
-     * Space 会话对象，管理 Space 表所有账号的登录、权限认证
+     * Space 会话对象，管理 Space 表所有账号的登录、权限认证，仅仅对于  Space 表中的账号有效
      */
     public static final StpLogic SPACE = new StpLogic(SPACE_TYPE);
 }

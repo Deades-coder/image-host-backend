@@ -1,4 +1,4 @@
-package generator.domain;
+package com.yang.imagehostbackend.model.entity;
 
 import com.baomidou.mybatisplus.annotation.IdType;
 import com.baomidou.mybatisplus.annotation.TableField;

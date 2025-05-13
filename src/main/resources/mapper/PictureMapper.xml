@@ -28,7 +28,7 @@
             <result property="thumbnailUrl" column="thumbnailUrl" jdbcType="VARCHAR"/>
             <result property="spaceId" column="spaceId" jdbcType="BIGINT"/>
             <result property="picColor" column="picColor" jdbcType="VARCHAR"/>
-
+            <result property="thumbCount" column="thumbCount" jdbcType="BIGINT"/>
 
 
 
@@ -37,7 +37,7 @@
     <sql id="Base_Column_List">
         id,url,name,thumbnailUrl,
         introduction,category,tags,
-        picSize,picWidth,picHeight,
+        picSize,picWidth,picHeight,thumbCount
         picScale,picFormat,userId,spaceId,
         createTime,editTime,updateTime,
         isDelete,reviewStatus,reviewMessage,

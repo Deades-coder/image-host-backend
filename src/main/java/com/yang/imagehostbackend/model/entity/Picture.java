@@ -131,6 +131,11 @@ public class Picture implements Serializable {
      */
     private String picColor;
 
+    /**
+     * 点赞数
+     */
+    private Long thumbCount;
+
     @TableField(exist = false)
     private static final long serialVersionUID = 1L;
 

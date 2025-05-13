@@ -48,3 +48,4 @@ CREATE INDEX idx_spaceId ON picture (spaceId);
 ALTER TABLE picture
     ADD COLUMN picColor varchar(16) null comment '图片主色调';
 
+ALTER TABLE `picture` ADD COLUMN `thumbCount` BIGINT DEFAULT 0 NOT NULL COMMENT '点赞数量';

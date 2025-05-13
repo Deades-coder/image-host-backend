@@ -42,7 +42,7 @@ public class PictureEditHandler extends TextWebSocketHandler {
     @Lazy
     private PictureEditEventProducer pictureEditEventProducer;
 
-    // 每张图片的编辑状态，key: pictureId, value: 当前正在编辑的用户 ID
+    // 每张图片的编辑状态以及编辑的user，key: pictureId, value: 当前正在编辑的用户 ID
     private final Map<Long, Long> pictureEditingUsers = new ConcurrentHashMap<>();
 
     // 保存所有连接的会话，key: pictureId, value: 用户会话集合
@@ -100,7 +100,7 @@ public class PictureEditHandler extends TextWebSocketHandler {
      * @param pictureId
      */
     public void handleEnterEditMessage(PictureEditRequestMessage pictureEditRequestMessage, WebSocketSession session, User user, Long pictureId) throws IOException {
-        // 没有用户正在编辑该图片，才能进入编辑
+        // 没有用户正在编辑该图片，才能进入编辑,“编辑锁”
         if (!pictureEditingUsers.containsKey(pictureId)) {
             // 设置用户正在编辑该图片
             pictureEditingUsers.put(pictureId, user.getId());

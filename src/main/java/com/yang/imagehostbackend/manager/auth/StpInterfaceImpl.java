@@ -160,16 +160,18 @@ public class StpInterfaceImpl implements StpInterface {
     }
 
 
-    // 从请求头获取上下文
+    // 从当前请求中获取上下文
     private SpaceUserAuthContext getAuthContextByRequest() {
         HttpServletRequest request = ((ServletRequestAttributes) RequestContextHolder.currentRequestAttributes()).getRequest();
         String contentType = request.getHeader(Header.CONTENT_TYPE.getValue());
         SpaceUserAuthContext authRequest;
         // 获取请求参数
+        // post请求有json
         if (ContentType.JSON.getValue().equals(contentType)) {
             String body = ServletUtil.getBody(request);
             authRequest = JSONUtil.toBean(body, SpaceUserAuthContext.class);
         } else {
+            // get请求
             Map<String, String> paramMap = ServletUtil.getParamMap(request);
             authRequest = BeanUtil.toBean(paramMap, SpaceUserAuthContext.class);
         }
