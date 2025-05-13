@@ -1,5 +1,6 @@
 package com.yang.imagehostbackend.controller;
 
+import cn.dev33.satoken.filter.SaPathCheckFilterForServlet;
 import cn.hutool.core.util.RandomUtil;
 import cn.hutool.core.util.StrUtil;
 import cn.hutool.json.JSONUtil;
@@ -7,17 +8,22 @@ import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.github.benmanes.caffeine.cache.Cache;
 import com.yang.imagehostbackend.annotation.AuthCheck;
 import com.yang.imagehostbackend.api.aliyunai.AliYunAiApi;
-import com.yang.imagehostbackend.api.aliyunai.model.CreateOutPaintingTaskResponse;
+import com.yang.imagehostbackend.api.aliyunai.model.ExpanedImageTaskResponse;
 import com.yang.imagehostbackend.api.aliyunai.model.GetOutPaintingTaskResponse;
 import com.yang.imagehostbackend.api.imagesearch.ImageSearchApiFacade;
 import com.yang.imagehostbackend.api.imagesearch.model.ImageSearchResult;
+import com.yang.imagehostbackend.manager.auth.SpaceUserAuthManager;
+import com.yang.imagehostbackend.manager.auth.StpKit;
+import com.yang.imagehostbackend.manager.auth.annotation.SaSpaceCheckPermission;
 import com.yang.imagehostbackend.common.BaseResponse;
 import com.yang.imagehostbackend.common.DeleteRequest;
 import com.yang.imagehostbackend.common.ResultUtils;
+import com.yang.imagehostbackend.constant.SpaceUserPermissionConstant;
 import com.yang.imagehostbackend.constant.UserConstant;
 import com.yang.imagehostbackend.exception.BusinessException;
 import com.yang.imagehostbackend.exception.ErrorCode;
 import com.yang.imagehostbackend.exception.ThrowUtils;
+import com.yang.imagehostbackend.model.entity.ExpendImageTask;
 import com.yang.imagehostbackend.model.enums.PictureReviewStatusEnum;
 import com.yang.imagehostbackend.model.dto.picture.*;
 import com.yang.imagehostbackend.model.entity.Picture;
@@ -25,10 +31,7 @@ import com.yang.imagehostbackend.model.entity.User;
 import com.yang.imagehostbackend.model.entity.Space;
 import com.yang.imagehostbackend.model.vo.PictureTagCategory;
 import com.yang.imagehostbackend.model.vo.PictureVO;
-import com.yang.imagehostbackend.service.PictureService;
-import com.yang.imagehostbackend.service.UserService;
-import com.yang.imagehostbackend.service.SpaceService;
-import com.yang.imagehostbackend.service.ExpendImageTaskService;
+import com.yang.imagehostbackend.service.*;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.BeanUtils;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -61,8 +64,7 @@ public class PictureController {
     private UserService userService;
     @Resource
     private SpaceService spaceService;
-    @Resource
-    private OutPaintingTaskService outPaintingTaskService;
+
     @Resource(name = "uploadTaskExecutor")
     private Executor uploadTaskExecutor;
     @Autowired
@@ -80,10 +82,15 @@ public class PictureController {
     @Resource
     private ExpendImageTaskService expendImageTaskService;
 
+    @Resource
+    private SpaceUserAuthManager  spaceUserAuthManager;
+
     private static final String LIST_PICVO_BY_PAGE = "yupicture:listPictureVOByPage";
+    @Autowired
+    private SaPathCheckFilterForServlet saPathCheckFilterForServlet;
 
     @PostMapping("/upload")
-    @AuthCheck(mustRole = UserConstant.ADMIN_ROLE)
+    @SaSpaceCheckPermission(value = SpaceUserPermissionConstant.PICTURE_UPLOAD)
     public CompletableFuture<BaseResponse<?>> uploadPicture(
             @RequestPart("file") MultipartFile multipartFile,
             PictureUploadRequest pictureUploadRequest,
@@ -118,6 +125,8 @@ public class PictureController {
      * 通过 URL 上传图片
      */
     @PostMapping("/upload/url")
+    @SaSpaceCheckPermission(value = SpaceUserPermissionConstant.PICTURE_UPLOAD)
+
     public CompletableFuture<BaseResponse<?>> uploadPictureByUrl(
             @RequestBody PictureUploadRequest pictureUploadRequest,
             HttpServletRequest request) {
@@ -155,12 +164,14 @@ public class PictureController {
             pictureQueryRequest.setNullSpaceId(true);
         } else {
             // 私有空间
-            User loginUser = userService.getLoginUser(request);
-            Space space = spaceService.getById(spaceId);
-            ThrowUtils.throwIf(space == null, ErrorCode.NOT_FOUND_ERROR, "空间不存在");
-            if (!loginUser.getId().equals(space.getUserId())) {
-                throw new BusinessException(ErrorCode.NO_AUTH_ERROR, "没有空间权限");
-            }
+//            User loginUser = userService.getLoginUser(request);
+//            Space space = spaceService.getById(spaceId);
+//            ThrowUtils.throwIf(space == null, ErrorCode.NOT_FOUND_ERROR, "空间不存在");
+//            if (!loginUser.getId().equals(space.getUserId())) {
+//                throw new BusinessException(ErrorCode.NO_AUTH_ERROR, "没有空间权限");
+//            }
+            boolean hasPermission = StpKit.SPACE.hasPermission(SpaceUserPermissionConstant.PICTURE_VIEW);
+            ThrowUtils.throwIf(!hasPermission, ErrorCode.NO_AUTH_ERROR);
         }
 
         // 构建 key
@@ -202,6 +213,8 @@ public class PictureController {
      * 删除图片
      */
     @PostMapping("/delete")
+    @SaSpaceCheckPermission(value = SpaceUserPermissionConstant.PICTURE_DELETE)
+
     public BaseResponse<Boolean> deletePicture(@RequestBody DeleteRequest deleteRequest, HttpServletRequest request) {
         if (deleteRequest == null || deleteRequest.getId() <= 0) {
             throw new BusinessException(ErrorCode.PARAMS_ERROR);
@@ -265,21 +278,29 @@ public class PictureController {
         Picture picture = pictureService.getById(id);
         ThrowUtils.throwIf(picture == null, ErrorCode.NOT_FOUND_ERROR);
         
-        // 空间权限校验
+        // 空间的图片需要鉴权
+        Space space = null;
         Long spaceId = picture.getSpaceId();
         if (spaceId != null) {
-            User loginUser = userService.getLoginUser(request);
-            pictureService.checkPictureAuth(loginUser, picture);
+            boolean hasPermission = StpKit.SPACE.hasPermission(SpaceUserPermissionConstant.PICTURE_VIEW);
+            ThrowUtils.throwIf(!hasPermission, ErrorCode.NO_AUTH_ERROR);
+            space = spaceService.getById(spaceId);
+            ThrowUtils.throwIf(space == null, ErrorCode.NOT_FOUND_ERROR, "空间不存在");
         }
-        
+
+        // 获取权限列表
+        User loginUser = userService.getLoginUser(request);
+        List<String> permissionList = spaceUserAuthManager.getPermissionList(space, loginUser);
         // 优先从缓存获取
         PictureVO pictureVO = hotImage.getIfPresent(id);
         if (pictureVO != null) {
             return ResultUtils.success(pictureVO);
         }
-        
+        pictureVO = pictureService.getPictureVO(picture, request);
+        pictureVO.setPermissionList(permissionList);
+
         // 获取封装类
-        return ResultUtils.success(pictureService.getPictureVO(picture, request));
+        return ResultUtils.success(pictureVO);
     }
 
     /**
@@ -300,6 +321,8 @@ public class PictureController {
      * 编辑图片（给用户使用）
      */
     @PostMapping("/edit")
+    @SaSpaceCheckPermission(value = SpaceUserPermissionConstant.PICTURE_EDIT)
+
     public BaseResponse<Boolean> editPicture(@RequestBody PictureEditRequest pictureEditRequest, HttpServletRequest request) {
         if (pictureEditRequest == null || pictureEditRequest.getId() <= 0) {
             throw new BusinessException(ErrorCode.PARAMS_ERROR);
@@ -308,6 +331,19 @@ public class PictureController {
         pictureService.editPicture(pictureEditRequest, loginUser);
         return ResultUtils.success(true);
     }
+
+    /**
+     * 批量编辑图片
+     */
+    @PostMapping("/edit/batch")
+    @SaSpaceCheckPermission(value = SpaceUserPermissionConstant.PICTURE_EDIT)
+    public BaseResponse<Boolean> editPictureByBatch(@RequestBody PictureEditByBatchRequest pictureEditByBatchRequest, HttpServletRequest request) {
+        ThrowUtils.throwIf(pictureEditByBatchRequest == null, ErrorCode.PARAMS_ERROR);
+        User loginUser = userService.getLoginUser(request);
+        pictureService.editPictureByBatch(pictureEditByBatchRequest, loginUser);
+        return ResultUtils.success(true);
+    }
+
 
     @GetMapping("/tag_category")
     public BaseResponse<PictureTagCategory> listPictureTagCategory() {
@@ -369,13 +405,14 @@ public class PictureController {
      * 创建 AI 扩图任务
      */
     @PostMapping("/out_painting/create_task")
-    public BaseResponse<CreateOutPaintingTaskResponse> createPictureOutPaintingTask(@RequestBody CreatePictureOutPaintingTaskRequest createPictureOutPaintingTaskRequest,
-                                                                                    HttpServletRequest request) {
+    @SaSpaceCheckPermission(value = SpaceUserPermissionConstant.PICTURE_EDIT)
+    public BaseResponse<ExpanedImageTaskResponse> createPictureOutPaintingTask(@RequestBody CreatePictureOutPaintingTaskRequest createPictureOutPaintingTaskRequest,
+                                                                               HttpServletRequest request) {
         if (createPictureOutPaintingTaskRequest == null || createPictureOutPaintingTaskRequest.getPictureId() == null) {
             throw new BusinessException(ErrorCode.PARAMS_ERROR);
         }
         User loginUser = userService.getLoginUser(request);
-        CreateOutPaintingTaskResponse response = pictureService.createPictureOutPaintingTask(createPictureOutPaintingTaskRequest, loginUser);
+        ExpanedImageTaskResponse response = pictureService.createPictureOutPaintingTask(createPictureOutPaintingTaskRequest, loginUser);
         return ResultUtils.success(response);
     }
 
@@ -387,18 +424,18 @@ public class PictureController {
         ThrowUtils.throwIf(StrUtil.isBlank(taskId), ErrorCode.PARAMS_ERROR);
         
         // 首先从数据库中查询任务
-        OutPaintingTask outPaintingTask = expendImageTaskService.getByTaskId(taskId);
-        if (outPaintingTask == null) {
+        ExpendImageTask expendImageTask = expendImageTaskService.getByTaskId(taskId);
+        if (expendImageTask == null) {
             throw new BusinessException(ErrorCode.NOT_FOUND_ERROR, "扩图任务不存在");
         }
         
         // 如果任务已经成功完成，直接返回结果
-        if ("SUCCEEDED".equals(outPaintingTask.getTaskStatus()) && StrUtil.isNotBlank(outPaintingTask.getOutputImageUrl())) {
+        if ("SUCCEEDED".equals(expendImageTask.getTask_status()) && StrUtil.isNotBlank(expendImageTask.getOutput_image_url())) {
             GetOutPaintingTaskResponse response = new GetOutPaintingTaskResponse();
             GetOutPaintingTaskResponse.Output output = new GetOutPaintingTaskResponse.Output();
-            output.setTaskId(outPaintingTask.getTaskId());
-            output.setTaskStatus(outPaintingTask.getTaskStatus());
-            output.setOutputImageUrl(outPaintingTask.getOutputImageUrl());
+            output.setTaskId(expendImageTask.getTask_id());
+            output.setTaskStatus(expendImageTask.getTask_status());
+            output.setOutputImageUrl(expendImageTask.getOutput_image_url());
             response.setOutput(output);
             return ResultUtils.success(response);
         }
@@ -408,7 +445,7 @@ public class PictureController {
         
         // 更新数据库中的任务状态
         if (task != null && task.getOutput() != null && 
-            !outPaintingTask.getTaskStatus().equals(task.getOutput().getTaskStatus())) {
+            !expendImageTask.getTask_status().equals(task.getOutput().getTaskStatus())) {
             expendImageTaskService.processOutPaintingTaskResult(taskId);
         }
         

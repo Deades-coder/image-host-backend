@@ -9,6 +9,7 @@ import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
 import com.yang.imagehostbackend.constant.UserConstant;
 import com.yang.imagehostbackend.exception.BusinessException;
 import com.yang.imagehostbackend.exception.ErrorCode;
+import com.yang.imagehostbackend.manager.auth.StpKit;
 import com.yang.imagehostbackend.model.enums.UserRoleEnum;
 import com.yang.imagehostbackend.model.dto.user.UserQueryRequest;
 import com.yang.imagehostbackend.model.entity.User;
@@ -107,7 +108,10 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User>
             throw new BusinessException(ErrorCode.PARAMS_ERROR, "用户不存在或密码错误");
         }
         request.getSession().setAttribute(UserConstant.USER_LOGIN_STATE, user);
-        return null;
+        // 记录用户登录态到 Sa-token，便于空间鉴权时使用，注意保证该用户信息与 SpringSession 中的信息过期时间一致
+        StpKit.SPACE.login(user.getId());
+        StpKit.SPACE.getSession().set(UserConstant.USER_LOGIN_STATE, user);
+        return this.getLoginUserVO(user);
     }
     /**
      * 获取当前登录用户

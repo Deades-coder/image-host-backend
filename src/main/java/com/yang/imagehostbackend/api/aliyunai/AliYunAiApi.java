@@ -5,7 +5,7 @@ import cn.hutool.http.HttpRequest;
 import cn.hutool.http.HttpResponse;
 import cn.hutool.json.JSONUtil;
 import com.yang.imagehostbackend.api.aliyunai.model.CreateOutPaintingTaskRequest;
-import com.yang.imagehostbackend.api.aliyunai.model.CreateOutPaintingTaskResponse;
+import com.yang.imagehostbackend.api.aliyunai.model.ExpanedImageTaskResponse;
 import com.yang.imagehostbackend.api.aliyunai.model.GetOutPaintingTaskResponse;
 import com.yang.imagehostbackend.exception.BusinessException;
 import com.yang.imagehostbackend.exception.ErrorCode;
@@ -37,7 +37,7 @@ public class AliYunAiApi {
      * @param createOutPaintingTaskRequest
      * @return
      */
-    public CreateOutPaintingTaskResponse createOutPaintingTask(CreateOutPaintingTaskRequest createOutPaintingTaskRequest) {
+    public ExpanedImageTaskResponse createOutPaintingTask(CreateOutPaintingTaskRequest createOutPaintingTaskRequest) {
         if (createOutPaintingTaskRequest == null) {
             throw new BusinessException(ErrorCode.OPERATION_ERROR, "扩图参数为空");
         }
@@ -54,13 +54,13 @@ public class AliYunAiApi {
                 log.error("请求异常：{}", httpResponse.body());
                 throw new BusinessException(ErrorCode.OPERATION_ERROR, "AI 扩图失败");
             }
-            CreateOutPaintingTaskResponse createOutPaintingTaskResponse = JSONUtil.toBean(httpResponse.body(), CreateOutPaintingTaskResponse.class);
-            if (createOutPaintingTaskResponse.getCode() != null) {
-                String errorMessage = createOutPaintingTaskResponse.getMessage();
+            ExpanedImageTaskResponse expanedImageTaskResponse = JSONUtil.toBean(httpResponse.body(), ExpanedImageTaskResponse.class);
+            if (expanedImageTaskResponse.getCode() != null) {
+                String errorMessage = expanedImageTaskResponse.getMessage();
                 log.error("请求异常：{}", errorMessage);
                 throw new BusinessException(ErrorCode.OPERATION_ERROR, "AI 扩图失败，" + errorMessage);
             }
-            return createOutPaintingTaskResponse;
+            return expanedImageTaskResponse;
         }
     }
 

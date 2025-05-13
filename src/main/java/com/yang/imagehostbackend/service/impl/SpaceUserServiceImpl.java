@@ -25,6 +25,9 @@ import org.springframework.stereotype.Service;
 import javax.annotation.Resource;
 import javax.servlet.http.HttpServletRequest;
 import java.util.List;
+import java.util.Map;
+import java.util.Set;
+import java.util.stream.Collectors;
 
 /**
 * @author Decades
@@ -101,8 +104,34 @@ public class SpaceUserServiceImpl extends ServiceImpl<SpaceUserMapper, SpaceUser
         if (spaceUserList == null) {
             return null;
         }
+        List<SpaceUserVO> spaceUserVOList = spaceUserList.stream().map(SpaceUserVO::objToVo).collect(Collectors.toList());
+        // 收集需要关联查询的用户ID和空间ID
+        Set<Long> userIdSet = spaceUserVOList.stream().map(SpaceUserVO::getUserId).collect(Collectors.toSet());
+        Set<Long> spaceIdSet = spaceUserVOList.stream().map(SpaceUserVO::getSpaceId).collect(Collectors.toSet());
+        // 2. 批量查询用户和空间
+        Map<Long, List<User>> userIdUserListMap = userService.listByIds(userIdSet).stream()
+                .collect(Collectors.groupingBy(User::getId));
+        Map<Long, List<Space>> spaceIdSpaceListMap = spaceService.listByIds(spaceIdSet).stream()
+                .collect(Collectors.groupingBy(Space::getId));
+        // 3. 填充 SpaceUserVO 的用户和空间信息
+        spaceUserVOList.forEach(spaceUserVO -> {
+            Long userId = spaceUserVO.getUserId();
+            Long spaceId = spaceUserVO.getSpaceId();
+            // 填充用户信息
+            User user = null;
+            if (userIdUserListMap.containsKey(userId)) {
+                user = userIdUserListMap.get(userId).get(0);
+            }
+            spaceUserVO.setUser(userService.getUserVO(user));
+            // 填充空间信息
+            Space space = null;
+            if (spaceIdSpaceListMap.containsKey(spaceId)) {
+                space = spaceIdSpaceListMap.get(spaceId).get(0);
+            }
+            spaceUserVO.setSpace(SpaceVO.objToVo(space));
+        });
+        return spaceUserVOList;
 
-        return null;
     }
 
     @Override

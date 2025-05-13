@@ -2,15 +2,13 @@ package com.yang.imagehostbackend.service;
 
 import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
-import com.yang.imagehostbackend.api.aliyunai.model.CreateOutPaintingTaskResponse;
-import com.yang.imagehostbackend.model.dto.file.UploadPictureResult;
+import com.yang.imagehostbackend.api.aliyunai.model.ExpanedImageTaskResponse;
 import com.yang.imagehostbackend.model.dto.picture.*;
 import com.yang.imagehostbackend.model.entity.Picture;
 import com.baomidou.mybatisplus.extension.service.IService;
 import com.yang.imagehostbackend.model.entity.User;
 import com.yang.imagehostbackend.model.vo.PictureVO;
 import org.springframework.scheduling.annotation.Async;
-import org.springframework.web.multipart.MultipartFile;
 
 import javax.servlet.http.HttpServletRequest;
 import java.util.List;
@@ -143,5 +141,5 @@ public interface PictureService extends IService<Picture> {
     void editPictureByBatch(PictureEditByBatchRequest pictureEditByBatchRequest, User loginUser);
 
 
-    CreateOutPaintingTaskResponse createPictureOutPaintingTask(CreatePictureOutPaintingTaskRequest createPictureOutPaintingTaskRequest, User loginUser);
+    ExpanedImageTaskResponse createPictureOutPaintingTask(CreatePictureOutPaintingTaskRequest createPictureOutPaintingTaskRequest, User loginUser);
 }

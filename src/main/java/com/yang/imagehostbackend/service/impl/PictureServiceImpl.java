@@ -10,7 +10,7 @@ import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
 import com.yang.imagehostbackend.api.aliyunai.AliYunAiApi;
 import com.yang.imagehostbackend.api.aliyunai.model.CreateOutPaintingTaskRequest;
-import com.yang.imagehostbackend.api.aliyunai.model.CreateOutPaintingTaskResponse;
+import com.yang.imagehostbackend.api.aliyunai.model.ExpanedImageTaskResponse;
 import com.yang.imagehostbackend.config.AsyncConfig;
 import com.yang.imagehostbackend.exception.BusinessException;
 import com.yang.imagehostbackend.exception.ErrorCode;
@@ -21,6 +21,7 @@ import com.yang.imagehostbackend.manager.upload.FilePictureUpload;
 import com.yang.imagehostbackend.manager.upload.PictureUploadTemplate;
 import com.yang.imagehostbackend.manager.upload.UrlPictureUpload;
 import com.yang.imagehostbackend.model.dto.picture.*;
+import com.yang.imagehostbackend.model.entity.ExpendImageTask;
 import com.yang.imagehostbackend.model.entity.Space;
 import com.yang.imagehostbackend.model.enums.PictureReviewStatusEnum;
 import com.yang.imagehostbackend.model.dto.file.UploadPictureResult;
@@ -29,6 +30,7 @@ import com.yang.imagehostbackend.model.entity.User;
 import com.yang.imagehostbackend.model.vo.PictureVO;
 import com.yang.imagehostbackend.model.vo.UserVO;
 import com.yang.imagehostbackend.producer.ExpandImageTaskProducer;
+import com.yang.imagehostbackend.service.ExpendImageTaskService;
 import com.yang.imagehostbackend.service.PictureService;
 import com.yang.imagehostbackend.mapper.PictureMapper;
 import com.yang.imagehostbackend.service.SpaceService;
@@ -97,8 +99,6 @@ public class PictureServiceImpl extends ServiceImpl<PictureMapper, Picture>
     @Resource
     private AliYunAiApi aliYunAiApi;
 
-    @Resource
-    private OutPaintingTaskService outPaintingTaskService;
     
     @Resource
     private ExpendImageTaskService expendImageTaskService;
@@ -135,9 +135,9 @@ public class PictureServiceImpl extends ServiceImpl<PictureMapper, Picture>
             Space space = spaceService.getById(spaceId);
             ThrowUtils.throwIf(space == null, ErrorCode.PARAMS_ERROR, "空间不存在");
             // 校验是否有空间的权限，仅空间管理员才能上传
-            if(!loginUser.getId().equals(space.getUserId())){
-                throw new BusinessException(ErrorCode.NO_AUTH_ERROR, "没有空间权限");
-            }
+//            if(!loginUser.getId().equals(space.getUserId())){
+//                throw new BusinessException(ErrorCode.NO_AUTH_ERROR, "没有空间权限");
+//            }
             // 校验额度
             if(space.getTotalCount() >= space.getMaxCount()){
                 throw new BusinessException(ErrorCode.OPERATION_ERROR, "空间条数不足");
@@ -157,9 +157,9 @@ public class PictureServiceImpl extends ServiceImpl<PictureMapper, Picture>
             Picture oldPicture = this.getById(pictureId);
             ThrowUtils.throwIf(oldPicture == null, ErrorCode.NOT_FOUND_ERROR, "图片不存在");
             // 仅本人或管理员可编辑图片
-            if (!oldPicture.getUserId().equals(loginUser.getId()) && !userService.isAdmin(loginUser)) {
-                throw new BusinessException(ErrorCode.NO_AUTH_ERROR);
-            }
+//            if (!oldPicture.getUserId().equals(loginUser.getId()) && !userService.isAdmin(loginUser)) {
+//                throw new BusinessException(ErrorCode.NO_AUTH_ERROR);
+//            }
             // 校验空间是否一致
             //没传 spaceId，则复用原有图片的 spaceId
             if(spaceId == null){
@@ -667,7 +667,7 @@ public class PictureServiceImpl extends ServiceImpl<PictureMapper, Picture>
     }
 
     @Override
-    public CreateOutPaintingTaskResponse createPictureOutPaintingTask(CreatePictureOutPaintingTaskRequest createPictureOutPaintingTaskRequest, User loginUser) {
+    public ExpanedImageTaskResponse createPictureOutPaintingTask(CreatePictureOutPaintingTaskRequest createPictureOutPaintingTaskRequest, User loginUser) {
         // 获取图片信息
         Long pictureId = createPictureOutPaintingTaskRequest.getPictureId();
         Picture picture = Optional.ofNullable(this.getById(pictureId))
@@ -681,7 +681,7 @@ public class PictureServiceImpl extends ServiceImpl<PictureMapper, Picture>
         createOutPaintingTaskRequest.setInput(input);
         createOutPaintingTaskRequest.setParameters(createPictureOutPaintingTaskRequest.getParameters());
         // 创建任务
-        CreateOutPaintingTaskResponse response = aliYunAiApi.createOutPaintingTask(createOutPaintingTaskRequest);
+        ExpanedImageTaskResponse response = aliYunAiApi.createOutPaintingTask(createOutPaintingTaskRequest);
         
         if (response != null && response.getOutput() != null && StrUtil.isNotBlank(response.getOutput().getTaskId())) {
             String taskId = response.getOutput().getTaskId();

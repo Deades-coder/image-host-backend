@@ -12,7 +12,7 @@ import lombok.NoArgsConstructor;
 @Data
 @NoArgsConstructor
 @AllArgsConstructor
-public class CreateOutPaintingTaskResponse {
+public class ExpanedImageTaskResponse {
 
     private Output output;
 
