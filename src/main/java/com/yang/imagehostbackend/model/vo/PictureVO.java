@@ -123,6 +123,11 @@ public class PictureVO implements Serializable {
      * 点赞数
      */
     private Long thumbCount;
+    
+    /**
+     * 当前用户是否已点赞
+     */
+    private Boolean hasThumb;
 
     /**
      * 封装类转对象

@@ -36,6 +36,7 @@ import com.yang.imagehostbackend.service.PictureService;
 import com.yang.imagehostbackend.mapper.PictureMapper;
 import com.yang.imagehostbackend.service.SpaceService;
 import com.yang.imagehostbackend.service.UserService;
+import com.yang.imagehostbackend.service.ThumbService;
 import com.yang.imagehostbackend.utils.ColorSimilarUtils;
 import com.yang.imagehostbackend.utils.ColorTransformUtils;
 import lombok.extern.slf4j.Slf4j;
@@ -76,6 +77,10 @@ public class PictureServiceImpl extends ServiceImpl<PictureMapper, Picture>
 
     @Resource
     private UserService userService;
+    
+    @Resource
+    private ThumbService thumbService;
+    
     @Resource
     private FilePictureUpload filePictureUpload;
 
@@ -267,6 +272,22 @@ public class PictureServiceImpl extends ServiceImpl<PictureMapper, Picture>
             UserVO userVO = userService.getUserVO(user);
             pictureVO.setUser(userVO);
         }
+        
+        // 添加：获取当前登录用户，判断是否已点赞
+        try {
+            User loginUser = userService.getLoginUser(request);
+            if (loginUser != null) {
+                // 查询当前用户是否已点赞该图片
+                Long loginUserId = loginUser.getId();
+                Boolean hasThumb = thumbService.hasThumb(picture.getId(), loginUserId);
+                pictureVO.setHasThumb(hasThumb);
+            }
+        } catch (Exception e) {
+            // 未登录或其他异常情况下，默认未点赞
+            pictureVO.setHasThumb(false);
+            log.warn("获取用户点赞状态失败: {}", e.getMessage());
+        }
+        
         long id = picture.getId();
         // 统计访问量
         String redisKey = PICTURE_COUNT_PREFIX + id;
@@ -754,7 +775,7 @@ public class PictureServiceImpl extends ServiceImpl<PictureMapper, Picture>
      * 清除图片相关的所有缓存
      * @param pictureId 图片ID
      */
-    private void clearPictureCache(Long pictureId) {
+    public void clearPictureCache(Long pictureId) {
         if (pictureId == null) return;
         
         // 清除本地缓存

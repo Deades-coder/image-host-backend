@@ -6,6 +6,7 @@ import com.yang.imagehostbackend.mapper.ThumbMapper;
 import com.yang.imagehostbackend.model.dto.thumb.ThumbEvent;
 import com.yang.imagehostbackend.model.entity.Picture;
 import com.yang.imagehostbackend.model.entity.Thumb;
+import com.yang.imagehostbackend.service.PictureService;
 import com.yang.imagehostbackend.service.impl.PictureServiceExtension;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -27,8 +28,11 @@ import java.util.Date;
 public class ThumbMQConsumer {
     private final ThumbMapper thumbMapper;
     private final PictureMapper pictureMapper;
-    private final PictureServiceExtension pictureService;
+    private final PictureServiceExtension pictureServiceExtension;
     private final RedisTemplate<String, Object> redisTemplate;
+    
+    // 使用接口而不是实现类
+    private final PictureService pictureService;
     
     /**
      * 监听点赞队列的消息
@@ -56,7 +60,7 @@ public class ThumbMQConsumer {
             // 确保thumbCount列存在
             log.info("开始确保thumbCount列存在");
             try {
-                pictureService.addThumbCountColumnIfNotExists();
+                pictureServiceExtension.addThumbCountColumnIfNotExists();
                 log.info("thumbCount列添加成功或已存在");
             } catch (Exception e) {
                 log.warn("添加thumbCount列失败，可能列已存在: {}", e.getMessage());
@@ -108,8 +112,14 @@ public class ThumbMQConsumer {
         if (rows > 0) {
             // 更新图片点赞数
             log.info("开始更新图片点赞数: pictureId={}", pictureId);
-            int updatedRows = pictureService.incrementThumbCount(pictureId);
+            int updatedRows = pictureServiceExtension.incrementThumbCount(pictureId);
             log.info("图片点赞数更新结果: updatedRows={}, pictureId={}", updatedRows, pictureId);
+            
+            // 清除图片相关缓存
+            log.info("开始清除图片缓存: pictureId={}", pictureId);
+            pictureService.clearPictureCache(pictureId);
+            log.info("图片缓存清除完成: pictureId={}", pictureId);
+            
             log.info("点赞成功: userId={}, pictureId={}", userId, pictureId);
         }
     }
@@ -138,8 +148,14 @@ public class ThumbMQConsumer {
         if (rows > 0) {
             // 更新图片点赞数
             log.info("开始更新图片点赞数: pictureId={}", pictureId);
-            int updatedRows = pictureService.decrementThumbCount(pictureId);
+            int updatedRows = pictureServiceExtension.decrementThumbCount(pictureId);
             log.info("图片点赞数更新结果: updatedRows={}, pictureId={}", updatedRows, pictureId);
+            
+            // 清除图片相关缓存
+            log.info("开始清除图片缓存: pictureId={}", pictureId);
+            pictureService.clearPictureCache(pictureId);
+            log.info("图片缓存清除完成: pictureId={}", pictureId);
+            
             log.info("取消点赞成功: userId={}, pictureId={}", userId, pictureId);
         }
     }

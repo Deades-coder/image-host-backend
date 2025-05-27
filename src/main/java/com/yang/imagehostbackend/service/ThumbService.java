@@ -30,5 +30,11 @@ public interface ThumbService extends IService<Thumb> {
      */
     Boolean undoThumb(DoThumbRequest doThumbRequest, HttpServletRequest request);
 
-    Boolean hasThumb(Long blogId, Long userId);
+    /**
+     * 判断用户是否已点赞图片
+     * @param pictureId 图片ID
+     * @param userId 用户ID
+     * @return 是否已点赞
+     */
+    Boolean hasThumb(Long pictureId, Long userId);
 }

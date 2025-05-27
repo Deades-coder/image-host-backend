@@ -142,4 +142,10 @@ public interface PictureService extends IService<Picture> {
 
 
     ExpanedImageTaskResponse createPictureOutPaintingTask(CreatePictureOutPaintingTaskRequest createPictureOutPaintingTaskRequest, User loginUser);
+    
+    /**
+     * 清除图片相关的所有缓存
+     * @param pictureId 图片ID
+     */
+    void clearPictureCache(Long pictureId);
 }

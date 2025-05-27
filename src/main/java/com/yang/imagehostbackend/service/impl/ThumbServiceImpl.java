@@ -1,5 +1,6 @@
 package com.yang.imagehostbackend.service.impl;
 
+import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
 import com.yang.imagehostbackend.constant.RedisLuaScriptConstant;
 import com.yang.imagehostbackend.exception.BusinessException;
@@ -148,7 +149,28 @@ public class ThumbServiceImpl extends ServiceImpl<ThumbMapper, Thumb>
 
     @Override
     public Boolean hasThumb(Long pictureId, Long userId) {
-        return redisTemplate.opsForHash().hasKey(RedisKeyUtil.getUserThumbKey(userId), pictureId.toString());
+        // 先从Redis缓存中查询
+        String userThumbKey = RedisKeyUtil.getUserThumbKey(userId);
+        Boolean hasThumb = redisTemplate.opsForHash().hasKey(userThumbKey, pictureId.toString());
+        
+        // 如果Redis中有记录，则直接返回
+        if (Boolean.TRUE.equals(hasThumb)) {
+            return true;
+        }
+        
+        // Redis中没有记录，查询数据库
+        LambdaQueryWrapper<Thumb> queryWrapper = new LambdaQueryWrapper<>();
+        queryWrapper.eq(Thumb::getUserId, userId)
+                .eq(Thumb::getPictureId, pictureId);
+        long count = this.count(queryWrapper);
+        
+        // 如果数据库中有记录，则更新Redis缓存并返回true
+        if (count > 0) {
+            redisTemplate.opsForHash().put(userThumbKey, pictureId.toString(), true);
+            return true;
+        }
+        
+        return false;
     }
 }
 
