@@ -34,6 +34,20 @@ spring:
     username: image
     password: 123456
 
+  # Elasticsearch 配置
+  elasticsearch:
+    uris: http://localhost:9200
+    connection-timeout: 5000
+    socket-timeout: 30000
+    username: 
+    password: 
+
+  # 定时任务配置
+  quartz:
+    job-store-type: memory
+    properties:
+      org.quartz.threadPool.threadCount: 5
+
   # ShardingSphere 配置
   shardingsphere:
     datasource:
@@ -168,4 +182,12 @@ rabbitmq:
   dead-letter-exchange: thumb-dlx
   dead-letter-queue: thumb-dlq
   dead-letter-routing-key: thumb-dl-routing-key
+
+# Elasticsearch 索引同步配置
+elasticsearch:
+  index:
+    picture-index: picture-index
+  sync:
+    batch-size: 100
+    cron: "0 0/5 * * * ?"  # 每5分钟执行一次增量同步
 
